@@ -31,7 +31,7 @@ body{background:var(--paper);color:var(--ink);font-family:'Anuphan',sans-serif;f
 @media(max-width:1080px){.layout{grid-template-columns:minmax(0,1fr)}}
 
 .sidebar{border-right:1px solid var(--line);padding:2.4rem 1.5rem 2.4rem 2rem}
-.sidebar-inner{position:sticky;top:1.8rem}
+.sidebar-inner{position:sticky;top:1.8rem;max-height:calc(100vh - 3.6rem);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
 .brand{font-family:'Bai Jamjuree',sans-serif;font-weight:700;font-size:1.15rem;letter-spacing:.02em;color:var(--teal-deep)}
 .brand .arrow{color:var(--amber)}
 .brand small{display:block;font-family:'Anuphan';font-weight:500;font-size:.78rem;color:var(--ink-soft);margin-top:.2rem}
@@ -46,7 +46,7 @@ body{background:var(--paper);color:var(--ink);font-family:'Anuphan',sans-serif;f
 #tocToggle{display:none;margin-top:.9rem;padding:.4rem .9rem;border:1px solid var(--line);background:#fff;border-radius:7px;font-family:'Anuphan';font-size:.85rem;cursor:pointer;color:var(--ink-soft)}
 @media(max-width:1080px){
   .sidebar{border-right:0;border-bottom:1px solid var(--line);padding:1.4rem}
-  .sidebar-inner{position:static}
+  .sidebar-inner{position:static;max-height:none;overflow:visible}
   .toc{display:none}.toc.open{display:block}#tocToggle{display:inline-block}
 }
 
