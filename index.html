@@ -437,6 +437,46 @@ footer b{color:var(--ink)}
 
   <h3>6.2 reset — เลื่อนป้าย branch ถอยหลัง</h3>
   <p>เข้าใจ <code>reset</code> ได้ทันทีถ้าจำว่ามันแค่ <strong>เลื่อนป้าย branch ไปชี้ commit อื่น</strong> ความต่างอยู่ที่ว่ามันจะแตะพื้นที่จัดเตรียมและไฟล์จริงด้วยไหม:</p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 720 310" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ตารางภาพสามโหมดของ git reset: soft รีเซ็ตเฉพาะป้าย branch, mixed รีเซ็ตป้าย branch กับ staging, hard รีเซ็ตทั้งป้าย branch staging และไฟล์จริงจนงานที่ยังไม่ commit หายถาวร">
+      <text x="370" y="40" text-anchor="middle" class="lbl">HEAD</text>
+      <text x="370" y="56" text-anchor="middle" class="sub">ป้าย branch</text>
+      <text x="510" y="40" text-anchor="middle" class="lbl">Staging</text>
+      <text x="510" y="56" text-anchor="middle" class="sub">(index)</text>
+      <text x="645" y="40" text-anchor="middle" class="lbl">Working</text>
+      <text x="645" y="56" text-anchor="middle" class="sub">(ไฟล์จริง)</text>
+      <line x1="20" y1="70" x2="700" y2="70" stroke="#ddd5c6" stroke-width="1"/>
+
+      <text x="20" y="107" font-family="'IBM Plex Mono',monospace" font-size="15" font-weight="600" fill="#222b2e">--soft</text>
+      <text x="20" y="127" class="sub">→ งานค้างใน staging รอ commit</text>
+      <circle cx="370" cy="113" r="16" fill="#0e6e63"/>
+      <circle cx="510" cy="113" r="16" fill="#faf7f1" stroke="#54625f" stroke-width="2"/>
+      <circle cx="645" cy="113" r="16" fill="#faf7f1" stroke="#54625f" stroke-width="2"/>
+
+      <text x="20" y="172" font-family="'IBM Plex Mono',monospace" font-size="15" font-weight="600" fill="#222b2e">--mixed</text>
+      <text x="20" y="192" class="sub">→ งานหลุดมาเป็นไฟล์แก้ · ค่าเริ่มต้น</text>
+      <circle cx="370" cy="178" r="16" fill="#0e6e63"/>
+      <circle cx="510" cy="178" r="16" fill="#0e6e63"/>
+      <circle cx="645" cy="178" r="16" fill="#faf7f1" stroke="#54625f" stroke-width="2"/>
+
+      <text x="20" y="237" font-family="'IBM Plex Mono',monospace" font-size="15" font-weight="600" fill="#222b2e">--hard</text>
+      <text x="20" y="257" class="sub">→ งานที่ยังไม่ commit หายถาวร</text>
+      <circle cx="370" cy="243" r="16" fill="#0e6e63"/>
+      <circle cx="510" cy="243" r="16" fill="#0e6e63"/>
+      <circle cx="645" cy="243" r="16" fill="#b3402e"/>
+
+      <line x1="20" y1="277" x2="700" y2="277" stroke="#ddd5c6" stroke-width="1"/>
+      <circle cx="32" cy="294" r="7" fill="#0e6e63"/>
+      <text x="46" y="298" class="sub">รีเซ็ตไปที่ commit เป้าหมาย — กู้ได้จาก reflog</text>
+      <circle cx="372" cy="294" r="7" fill="#b3402e"/>
+      <text x="386" y="298" class="sub">ลบงานที่ยังไม่ commit — หายจริง</text>
+      <circle cx="640" cy="294" r="7" fill="#faf7f1" stroke="#54625f" stroke-width="2"/>
+      <text x="654" y="298" class="sub">ไม่แตะ</text>
+    </svg>
+    <figcaption><b>FIG 6.1</b> — ทั้งสามโหมดเลื่อนป้าย branch เหมือนกัน ต่างกันที่ "ตามไปรีเซ็ต" ลึกแค่ไหน · <code>--soft</code> แตะแค่ป้าย, <code>--mixed</code> แตะป้าย+staging, <code>--hard</code> แตะถึงไฟล์จริง — จุดเดียวที่ทำให้งานหายถาวร</figcaption>
+  </figure>
+
   <table>
     <thead><tr><th>โหมด</th><th>เลื่อนป้าย</th><th>พื้นที่จัดเตรียม</th><th>ไฟล์จริง</th><th>ใช้เมื่อ</th></tr></thead>
     <tbody>
