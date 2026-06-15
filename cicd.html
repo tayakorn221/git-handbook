@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CI/CD 0 → Hero — จาก commit สู่ production อัตโนมัติ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700&family=Bai+Jamjuree:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#faf7f1; --paper-2:#f2ede3; --ink:#222b2e; --ink-soft:#54625f;
+  --line:#ddd5c6; --teal:#0e6e63; --teal-deep:#0a5048; --teal-soft:#e2eeea;
+  --amber:#c07415; --amber-soft:#f8ecd8; --red:#b3402e; --red-soft:#f6e3de;
+  --code-bg:#26302f; --code-ink:#e8e3d6;
+  /* level accent colors — ไล่เฉดจากเย็นไปร้อนตามความยาก */
+  --l0:#5a8a5e; --l0-soft:#e6efe4;
+  --l1:#0e6e63; --l1-soft:#e2eeea;
+  --l2:#c07415; --l2-soft:#f8ecd8;
+  --l3:#c2562a; --l3-soft:#f8e6dc;
+  --l4:#a33327; --l4-soft:#f6e0db;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;scroll-padding-top:2rem}
+body{background:var(--paper);color:var(--ink);font-family:'Anuphan',sans-serif;font-size:17px;line-height:1.85;-webkit-font-smoothing:antialiased}
+::selection{background:var(--teal);color:#fff}
+
+#progress{position:fixed;top:0;left:0;height:3px;background:var(--teal);width:0;z-index:99}
+
+.layout{display:grid;grid-template-columns:310px minmax(0,1fr);max-width:1300px;margin:0 auto}
+@media(max-width:1080px){.layout{grid-template-columns:minmax(0,1fr)}}
+
+.sidebar{border-right:1px solid var(--line);padding:2.4rem 1.5rem 2.4rem 2rem}
+.sidebar-inner{position:sticky;top:1.8rem;max-height:calc(100vh - 3.6rem);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.brand{font-family:'Bai Jamjuree',sans-serif;font-weight:700;font-size:1.15rem;letter-spacing:.02em;color:var(--teal-deep)}
+.brand .arrow{color:var(--amber)}
+.brand small{display:block;font-family:'Anuphan';font-weight:500;font-size:.78rem;color:var(--ink-soft);margin-top:.2rem}
+.backlink{display:inline-flex;align-items:center;gap:.4rem;margin-top:1rem;font-size:.8rem;color:var(--ink-soft);text-decoration:none;font-family:'IBM Plex Mono',monospace;padding:.3rem .6rem;border:1px solid var(--line);border-radius:7px;transition:background .15s}
+.backlink:hover{background:var(--paper-2);color:var(--teal-deep)}
+.toc{list-style:none;margin-top:1.5rem}
+.toc .grp{font-family:'IBM Plex Mono',monospace;font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);margin:1.1rem 0 .35rem .7rem;display:flex;align-items:center;gap:.45rem}
+.toc .grp::before{content:"";width:9px;height:9px;border-radius:2px;background:var(--gc,var(--teal))}
+.toc li a{display:flex;gap:.6rem;align-items:baseline;padding:.36rem .7rem;border-radius:7px;color:var(--ink-soft);text-decoration:none;font-size:.9rem;font-weight:500;transition:background .15s,color .15s}
+.toc li a .n{font-family:'IBM Plex Mono',monospace;font-size:.7rem;color:var(--amber);min-width:1.5em}
+.toc li a:hover{background:var(--paper-2);color:var(--ink)}
+.toc li a.active{background:var(--teal-soft);color:var(--teal-deep);font-weight:600}
+.toc li a.active .n{color:var(--teal)}
+#tocToggle{display:none;margin-top:.9rem;padding:.4rem .9rem;border:1px solid var(--line);background:#fff;border-radius:7px;font-family:'Anuphan';font-size:.85rem;cursor:pointer;color:var(--ink-soft)}
+@media(max-width:1080px){
+  .sidebar{border-right:0;border-bottom:1px solid var(--line);padding:1.4rem}
+  .sidebar-inner{position:static;max-height:none;overflow:visible}
+  .toc{display:none}.toc.open{display:block}#tocToggle{display:inline-block}
+}
+
+main{padding:0 clamp(1.3rem,4vw,4.5rem) 6rem;max-width:880px}
+
+.hero{padding:4.5rem 0 3.2rem;border-bottom:1px solid var(--line)}
+.hero .kicker{font-family:'IBM Plex Mono',monospace;font-size:.78rem;letter-spacing:.14em;color:var(--amber);text-transform:uppercase}
+.hero h1{font-family:'Bai Jamjuree',sans-serif;font-weight:700;font-size:clamp(2.1rem,5vw,3.3rem);line-height:1.2;margin:.7rem 0 1.1rem}
+.hero h1 .g{color:var(--teal)}
+.hero h1 .arrow{color:var(--amber);font-family:'IBM Plex Mono',monospace}
+.hero p.lead{font-size:1.07rem;color:var(--ink-soft);max-width:40em}
+.hero .meta{display:flex;flex-wrap:wrap;gap:.6rem 1.6rem;margin-top:1.6rem;font-size:.83rem;color:var(--ink-soft)}
+.hero .meta b{color:var(--ink);font-weight:600}
+.ladder{display:flex;gap:.4rem;margin-top:1.8rem;flex-wrap:wrap}
+.ladder span{font-family:'IBM Plex Mono',monospace;font-size:.72rem;padding:.3rem .7rem;border-radius:20px;font-weight:500}
+
+.chapter{padding-top:4rem}
+.ch-head{border-bottom:2px solid var(--ink);padding-bottom:.85rem;margin-bottom:1.7rem}
+.ch-head .row{display:flex;align-items:baseline;gap:1.1rem}
+.ch-head .num{font-family:'Bai Jamjuree',sans-serif;font-weight:700;font-size:2.5rem;line-height:1;color:var(--amber)}
+.ch-head h2{font-family:'Bai Jamjuree',sans-serif;font-weight:700;font-size:clamp(1.3rem,2.6vw,1.7rem);line-height:1.3}
+.ch-head .chip{display:inline-block;margin-top:.7rem;font-family:'IBM Plex Mono',monospace;font-size:.7rem;font-weight:600;padding:.2rem .7rem;border-radius:20px;letter-spacing:.03em}
+
+h3{font-family:'Bai Jamjuree',sans-serif;font-weight:600;font-size:1.18rem;margin:2.5rem 0 .8rem;color:var(--teal-deep)}
+h4{font-family:'Bai Jamjuree',sans-serif;font-weight:600;font-size:1rem;margin:1.7rem 0 .5rem}
+p{margin:.85rem 0}strong{font-weight:600}
+ul,ol{margin:.8rem 0 1rem 1.5rem}li{margin:.35rem 0}li::marker{color:var(--amber)}
+code{font-family:'IBM Plex Mono',monospace;font-size:.82em;background:var(--paper-2);border:1px solid var(--line);padding:.08em .4em;border-radius:5px;white-space:nowrap}
+
+pre{background:var(--code-bg);color:var(--code-ink);font-family:'IBM Plex Mono',monospace;font-size:.8rem;line-height:1.75;padding:1.1rem 1.3rem;border-radius:10px;overflow-x:auto;margin:1.2rem 0}
+pre code{background:none;border:0;padding:0;color:inherit;white-space:pre;font-size:inherit}
+pre .c{color:#8fa39b}      /* comment */
+pre .k{color:#f0b35e}      /* key / keyword */
+pre .a{color:#9ed0b5}      /* value / string */
+pre .o{color:#a9b6b2}      /* output */
+pre .p{color:#e88c74}      /* prompt $ */
+
+table{width:100%;border-collapse:collapse;margin:1.4rem 0;font-size:.92rem;line-height:1.6}
+th{font-family:'Bai Jamjuree',sans-serif;font-weight:600;text-align:left;background:var(--ink);color:var(--paper);padding:.6rem .85rem;font-size:.85rem}
+th:first-child{border-radius:8px 0 0 0}th:last-child{border-radius:0 8px 0 0}
+td{padding:.6rem .85rem;border-bottom:1px solid var(--line);vertical-align:top}
+tr:nth-child(even) td{background:rgba(242,237,227,.55)}
+td b{font-weight:600;color:var(--teal-deep)}
+
+.note,.warn,.use{margin:1.6rem 0;padding:1rem 1.2rem .95rem;border-radius:10px;font-size:.94rem}
+.note{background:var(--teal-soft)}.warn{background:var(--red-soft)}.use{background:var(--amber-soft)}
+.note .t,.warn .t,.use .t{font-family:'Bai Jamjuree',sans-serif;font-weight:600;font-size:.86rem;display:block;margin-bottom:.3rem}
+.note .t{color:var(--teal-deep)}.warn .t{color:var(--red)}.use .t{color:var(--amber)}
+
+.fig{margin:2.2rem 0;padding:1.6rem 1.4rem 1.1rem;background:#fff;border:1px solid var(--line);border-radius:12px;overflow-x:auto}
+.fig svg{width:100%;height:auto;display:block;min-width:560px}
+.fig figcaption{margin-top:.9rem;padding-top:.7rem;border-top:1px dashed var(--line);font-size:.83rem;color:var(--ink-soft)}
+.fig figcaption b{color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:.76rem}
+.fig text{font-family:'Anuphan',sans-serif}
+.fig .lbl{font-size:13px;font-weight:600;fill:var(--ink)}
+.fig .lbl-w{font-size:13px;font-weight:600;fill:#fff}
+.fig .sub{font-size:11px;fill:var(--ink-soft)}
+.fig .sub-w{font-size:11px;fill:#cfd8d3}
+.fig .mono{font-family:'IBM Plex Mono',monospace;font-size:11px;fill:var(--ink-soft)}
+.fig .mono-t{font-family:'IBM Plex Mono',monospace;font-size:11px;fill:var(--teal-deep);font-weight:600}
+.fig .mono-a{font-family:'IBM Plex Mono',monospace;font-size:11px;fill:var(--amber);font-weight:600}
+.fig .flow{stroke:var(--ink-soft);stroke-width:1.5;fill:none}
+.fig .flow-t{stroke:var(--teal);stroke-width:1.7;fill:none}
+.fig .flow-a{stroke:var(--amber);stroke-width:1.7;fill:none}
+.fig .flow-r{stroke:var(--red);stroke-width:1.7;fill:none}
+.fig .dash{stroke-dasharray:5 4}
+
+.chapter-end{margin-top:3.2rem;text-align:center;color:var(--amber);font-family:'IBM Plex Mono',monospace;font-size:.8rem;letter-spacing:.5em}
+footer{margin-top:5rem;padding-top:2rem;border-top:2px solid var(--ink);font-size:.88rem;color:var(--ink-soft)}
+footer b{color:var(--ink)}
+footer a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--line)}
+
+@media print{
+  #progress,.sidebar,#tocToggle{display:none}
+  .layout{display:block}main{max-width:100%;padding:0}
+  .fig,table,pre,.note,.warn,.use{break-inside:avoid}
+  .fig svg{min-width:0}.chapter{padding-top:2rem}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+
+<svg width="0" height="0" style="position:absolute"><defs>
+  <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M1,1 L8,4.5 L1,8 Z" fill="#54625f"/></marker>
+  <marker id="ar-t" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M1,1 L8,4.5 L1,8 Z" fill="#0e6e63"/></marker>
+  <marker id="ar-a" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M1,1 L8,4.5 L1,8 Z" fill="#c07415"/></marker>
+  <marker id="ar-r" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M1,1 L8,4.5 L1,8 Z" fill="#b3402e"/></marker>
+</defs></svg>
+
+<div class="layout">
+<aside class="sidebar">
+  <div class="sidebar-inner">
+    <div class="brand">CI/CD <span class="arrow">0 → HERO</span><small>จาก commit สู่ production อัตโนมัติ</small></div>
+    <a class="backlink" href="index.html">← เล่ม Git 0 → Hero</a>
+    <button id="tocToggle">☰ สารบัญ</button>
+    <ul class="toc" id="toc">
+      <li class="grp" style="--gc:var(--l0)">Level 0 · ปูพื้น</li>
+      <li><a href="#ch1"><span class="n">01</span>CI/CD คืออะไร &amp; ทำไมต้องมี</a></li>
+      <li><a href="#ch2"><span class="n">02</span>แบบจำลองความคิดหลัก</a></li>
+      <li class="grp" style="--gc:var(--l1)">Level 1 · พื้นฐาน</li>
+      <li><a href="#ch3"><span class="n">03</span>Pipeline แรกของคุณ</a></li>
+      <li><a href="#ch4"><span class="n">04</span>Jobs · Steps · Runners</a></li>
+      <li><a href="#ch5"><span class="n">05</span>Build · Test · Lint</a></li>
+      <li class="grp" style="--gc:var(--l2)">Level 2 · ระดับกลาง</li>
+      <li><a href="#ch6"><span class="n">06</span>Artifacts &amp; Caching</a></li>
+      <li><a href="#ch7"><span class="n">07</span>Matrix &amp; ขนานงาน</a></li>
+      <li><a href="#ch8"><span class="n">08</span>Secrets &amp; ตัวแปร</a></li>
+      <li class="grp" style="--gc:var(--l3)">Level 3 · เข้าสู่ CD</li>
+      <li><a href="#ch9"><span class="n">09</span>Delivery vs Deployment</a></li>
+      <li><a href="#ch10"><span class="n">10</span>Environments &amp; Deploy</a></li>
+      <li><a href="#ch11"><span class="n">11</span>กลยุทธ์ Deploy &amp; Rollback</a></li>
+      <li class="grp" style="--gc:var(--l4)">Level 4 · ระดับเทพ</li>
+      <li><a href="#ch12"><span class="n">12</span>ความปลอดภัยของ Pipeline</a></li>
+      <li><a href="#ch13"><span class="n">13</span>Runners &amp; ความเร็ว</a></li>
+      <li><a href="#ch14"><span class="n">14</span>เทียบแพลตฟอร์ม &amp; บทสรุป</a></li>
+    </ul>
+  </div>
+</aside>
+
+<main>
+<header class="hero">
+  <div class="kicker">CI/CD Handbook · 14 บท · 5 ระดับ</div>
+  <h1>เข้าใจ <span class="g">CI/CD</span> <span class="arrow">0 → Hero</span><br>จาก commit สู่ production อัตโนมัติ</h1>
+  <p class="lead">เล่มต่อจาก Git — พาคุณจากคนไม่เคยตั้ง pipeline ไปจนออกแบบสายการส่งมอบซอฟต์แวร์ที่อัตโนมัติ ปลอดภัย และเชื่อถือได้ เน้นแนวคิดและเหตุผลที่ไม่ผูกกับเครื่องมือใดเครื่องมือหนึ่ง พร้อมตัวอย่าง YAML จริงและเทียบหลายแพลตฟอร์ม</p>
+  <div class="meta">
+    <span>ต่อจาก: <b>Git 0 → Hero</b></span>
+    <span>เวลาอ่าน: <b>~90 นาที</b></span>
+    <span>ภาษา: <b>ไทย พร้อมไดอะแกรม</b></span>
+  </div>
+  <div class="ladder">
+    <span style="background:var(--l0-soft);color:var(--l0)">0 · ปูพื้น</span>
+    <span style="background:var(--l1-soft);color:var(--l1)">1 · พื้นฐาน</span>
+    <span style="background:var(--l2-soft);color:var(--l2)">2 · กลาง</span>
+    <span style="background:var(--l3-soft);color:var(--l3)">3 · CD</span>
+    <span style="background:var(--l4-soft);color:var(--l4)">4 · เทพ</span>
+  </div>
+</header>
+
+<!-- ============================ CH1 ============================ -->
+<section class="chapter" id="ch1">
+  <div class="ch-head">
+    <div class="row"><div class="num">01</div><h2>CI/CD คืออะไร &amp; ทำไมต้องมี</h2></div>
+    <span class="chip" style="background:var(--l0-soft);color:var(--l0)">LEVEL 0 · ปูพื้นจากศูนย์</span>
+  </div>
+
+  <p>ในเล่ม Git คุณเรียนวิธีบันทึกและรวมโค้ดของหลายคนเข้าด้วยกัน แต่มีคำถามที่ค้างอยู่: <strong>หลังจาก <code>git push</code> แล้ว ใครเป็นคนตรวจว่าโค้ดที่เพิ่งรวมเข้ามายัง build ได้ เทสต์ผ่าน และไม่ทำของเดิมพัง?</strong> ถ้าคำตอบคือ "คนในทีมต้องมานั่งตรวจเองทุกครั้ง" นั่นคือจุดที่ทุกอย่างเริ่มช้าและพลาดง่าย CI/CD คือการยกงานตรวจสอบและส่งมอบทั้งหมดนั้นให้ <strong>เครื่องทำอัตโนมัติทุกครั้งที่โค้ดเปลี่ยน</strong></p>
+
+  <p>ตัวย่อสองชุดนี้แยกเป็นสองเรื่องที่ต่อเนื่องกัน:</p>
+  <ul>
+    <li><strong>CI — Continuous Integration</strong> (การรวมโค้ดอย่างต่อเนื่อง): รวมงานของทุกคนเข้าสายหลักบ่อย ๆ แล้วให้ระบบ <strong>build + test อัตโนมัติทันที</strong> เพื่อจับปัญหาให้เร็วที่สุด</li>
+    <li><strong>CD — Continuous Delivery / Deployment</strong> (การส่งมอบ/ปล่อยขึ้นใช้งานอย่างต่อเนื่อง): เมื่อโค้ดผ่าน CI แล้ว ก็ <strong>แพ็กและส่งขึ้นไปใช้งานจริงอัตโนมัติ</strong> หรือเตรียมให้พร้อมกดปล่อยได้ทันที</li>
+  </ul>
+
+  <h3>1.1 ปัญหาที่ CI เกิดมาเพื่อแก้ — "integration hell"</h3>
+  <p>ลองนึกถึงทีมที่แต่ละคนแยกไปเขียนฟีเจอร์ของตัวเองคนละ branch เป็นเวลาหนึ่งเดือน โดยไม่รวมกลับเลย พอถึงวันรวม (integrate) ทุกคนพบว่าโค้ดชนกันเต็มไปหมด สมมติฐานไม่ตรงกัน ของที่เคยทำงานกลับพัง — ต้องเสียเวลาเป็นสัปดาห์แก้ "วันรวมร่าง" นี้คือสิ่งที่เรียกว่า <strong>integration hell</strong></p>
+  <p>CI พลิกปัญหานี้ด้วยหลักง่าย ๆ ข้อเดียว: <strong>ถ้าการรวมเจ็บ ก็รวมให้บ่อยขึ้นจนมันไม่เจ็บ</strong> รวมวันละหลายครั้ง ทีละนิด แล้วให้เครื่องตรวจทุกครั้ง ปัญหาจะถูกจับตั้งแต่ยังเล็กและรู้ทันทีว่าเกิดจาก commit ไหน</p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 720 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="เทียบการรวมโค้ดแบบนาน ๆ ครั้งที่กองปัญหาไว้จนระเบิดทีเดียว กับ CI ที่รวมบ่อย ๆ ทีละนิดและตรวจอัตโนมัติทุกครั้ง">
+      <text x="180" y="26" text-anchor="middle" class="lbl">รวมนาน ๆ ครั้ง</text>
+      <text x="180" y="44" text-anchor="middle" class="sub">ปัญหากองสะสมจนระเบิดทีเดียว</text>
+      <line x1="40" y1="150" x2="300" y2="150" class="flow"/>
+      <circle cx="60" cy="150" r="10" fill="#e2eeea" stroke="#0e6e63"/>
+      <circle cx="120" cy="150" r="10" fill="#e2eeea" stroke="#0e6e63"/>
+      <circle cx="180" cy="150" r="10" fill="#e2eeea" stroke="#0e6e63"/>
+      <circle cx="240" cy="150" r="10" fill="#e2eeea" stroke="#0e6e63"/>
+      <circle cx="300" cy="150" r="26" fill="#f6e3de" stroke="#b3402e" stroke-width="1.8"/><text x="300" y="155" text-anchor="middle" class="mono" style="fill:#b3402e">💥</text>
+      <text x="300" y="200" text-anchor="middle" class="mono" style="fill:#b3402e">merge ครั้งใหญ่ = นรก</text>
+      <line x1="370" y1="20" x2="370" y2="235" stroke="#ddd5c6"/>
+      <text x="545" y="26" text-anchor="middle" class="lbl">Continuous Integration</text>
+      <text x="545" y="44" text-anchor="middle" class="sub">รวมบ่อย ตรวจทุกครั้ง จับปัญหาตั้งแต่เล็ก</text>
+      <line x1="410" y1="150" x2="690" y2="150" class="flow-t"/>
+      <circle cx="430" cy="150" r="11" fill="#e2eeea" stroke="#0e6e63"/><path d="M425 150 l4 4 l6 -8" class="flow-t"/>
+      <circle cx="495" cy="150" r="11" fill="#e2eeea" stroke="#0e6e63"/><path d="M490 150 l4 4 l6 -8" class="flow-t"/>
+      <circle cx="560" cy="150" r="11" fill="#f6e3de" stroke="#b3402e"/><text x="560" y="154" text-anchor="middle" style="font-size:11px;fill:#b3402e">✕</text>
+      <circle cx="625" cy="150" r="11" fill="#e2eeea" stroke="#0e6e63"/><path d="M620 150 l4 4 l6 -8" class="flow-t"/>
+      <circle cx="680" cy="150" r="11" fill="#e2eeea" stroke="#0e6e63"/><path d="M675 150 l4 4 l6 -8" class="flow-t"/>
+      <text x="560" y="185" text-anchor="middle" class="mono" style="fill:#b3402e">พังตรงนี้ → รู้ทันที</text>
+      <text x="560" y="200" text-anchor="middle" class="mono">แก้แค่ commit เดียว</text>
+    </svg>
+    <figcaption><b>FIG 1.1</b> — ยิ่งเว้นช่วงรวมโค้ดนาน ปัญหายิ่งกองทับกันจนแก้ยาก · CI ทำให้ทุก commit ถูกตรวจทันที ความพังถูกจำกัดวงให้เล็กและชี้ตัวการได้ตรงจุด</figcaption>
+  </figure>
+
+  <h3>1.2 หัวใจคือ "วงจรป้อนกลับที่สั้น"</h3>
+  <p>คุณค่าที่แท้จริงของ CI/CD ไม่ใช่ "ความอัตโนมัติ" เอง แต่คือ <strong>ความเร็วของวงจรป้อนกลับ (feedback loop)</strong> — ระยะเวลาตั้งแต่คุณเขียนโค้ดผิด จนถึงตอนที่มีคน/อะไรบางอย่างบอกคุณว่ามันผิด ยิ่งวงจรนี้สั้น ค่าแก้ยิ่งถูก เพราะคุณยังจำได้ว่าเพิ่งแก้อะไรไป และบั๊กยังไม่ทันแพร่ไปไหน</p>
+  <table>
+    <thead><tr><th>บั๊กถูกจับเมื่อ</th><th>ค่าใช้จ่ายในการแก้</th></tr></thead>
+    <tbody>
+      <tr><td>ตอนเขียน (ในเครื่องตัวเอง)</td><td><b style="color:var(--teal-deep)">แทบฟรี — แก้ทันที</b></td></tr>
+      <tr><td>ตอน CI รันหลัง push (ไม่กี่นาทีต่อมา)</td><td>ถูก — ยังจำ context ได้</td></tr>
+      <tr><td>ตอน reviewer หรือ QA เจอ (วันต่อมา)</td><td>ปานกลาง — ต้องวนกลับมาคิดใหม่</td></tr>
+      <tr><td>ตอนลูกค้าเจอบน production</td><td><b style="color:var(--red)">แพงที่สุด — กระทบจริง + เร่งแก้</b></td></tr>
+    </tbody>
+  </table>
+  <p>CI/CD คือเครื่องจักรที่ดัน "จุดที่จับบั๊กได้" ให้ขยับขึ้นไปบนสุดของตารางนี้ให้มากที่สุด</p>
+
+  <div class="use"><span class="t">CI/CD ต่อยอดจาก Git โดยตรง</span>ทุกอย่างในเล่มนี้เริ่มทำงานจากเหตุการณ์ใน Git ที่คุณเรียนมาแล้ว — <code>git push</code> และการเปิด Pull Request คือ "ทริกเกอร์" ที่ปลุก pipeline ให้ตื่นขึ้นมาทำงาน ถ้ายังไม่แม่นเรื่อง branch กับ PR แนะนำให้ทบทวนบทที่ 4–5 และ 9 ของเล่ม Git ก่อน</div>
+
+  <div class="note"><span class="t">สรุปบทที่ 1</span>CI = รวมโค้ดบ่อย ๆ แล้วให้เครื่อง build+test ทุกครั้ง · CD = ส่ง/ปล่อยขึ้นใช้งานอัตโนมัติเมื่อผ่าน CI · เกิดมาเพื่อฆ่า "integration hell" ด้วยการรวมถี่จนไม่เจ็บ · หัวใจคือ <strong>วงจรป้อนกลับที่สั้น</strong> — จับบั๊กยิ่งเร็ว ยิ่งถูก · pipeline ถูกปลุกโดยเหตุการณ์ใน Git เช่น push และ PR</div>
+  <div class="chapter-end">· · ·</div>
+</section>
+
+<!-- ============================ CH2 ============================ -->
+<section class="chapter" id="ch2">
+  <div class="ch-head">
+    <div class="row"><div class="num">02</div><h2>แบบจำลองความคิดหลัก</h2></div>
+    <span class="chip" style="background:var(--l0-soft);color:var(--l0)">LEVEL 0 · ปูพื้นจากศูนย์</span>
+  </div>
+
+  <p>บทนี้สำคัญที่สุดในเล่ม เช่นเดียวกับบทที่ 2 ของเล่ม Git ถ้าคุณเข้าใจสองแนวคิดต่อไปนี้ — <strong>กายวิภาคของ pipeline</strong> และ <strong>เส้นแบ่งสามระดับของ CI/CD</strong> — รายละเอียด YAML ที่เหลือทั้งเล่มจะกลายเป็นเรื่องเดาได้ ไม่ใช่เรื่องท่องจำ</p>
+
+  <h3>2.1 Pipeline คือสายพานประกอบอัตโนมัติ</h3>
+  <p>แก่นของ CI/CD คือ <strong>pipeline</strong> — ชุดขั้นตอนที่ทำงานเรียงต่อกันโดยอัตโนมัติเมื่อมีเหตุการณ์มากระตุ้น มองมันเป็นสายพานในโรงงาน: โค้ดดิบเข้าทางหนึ่ง ผ่านสถานีตรวจและประกอบทีละสถานี แล้วออกอีกทางเป็นซอฟต์แวร์ที่พร้อมใช้งาน ทุกแพลตฟอร์ม (GitHub Actions, GitLab CI, Jenkins, CircleCI) ใช้คำศัพท์ต่างกันแต่โครงสร้างเดียวกันนี้เสมอ:</p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 720 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="กายวิภาคของ pipeline: เหตุการณ์ trigger ปลุก workflow ซึ่งประกอบด้วยหลาย job แต่ละ job รันบน runner และมีหลาย step เรียงกัน">
+      <rect x="20" y="92" width="120" height="46" rx="9" fill="#fff" stroke="#54625f" stroke-width="1.4"/>
+      <text x="80" y="112" text-anchor="middle" class="lbl">Event</text>
+      <text x="80" y="129" text-anchor="middle" class="mono">push / PR</text>
+      <path d="M142 115 L 178 115" class="flow-a" marker-end="url(#ar-a)"/>
+      <rect x="180" y="40" width="520" height="155" rx="12" fill="#faf7f1" stroke="#0e6e63" stroke-width="1.4" stroke-dasharray="4 3"/>
+      <text x="200" y="60" class="mono-t">Workflow / Pipeline</text>
+      <!-- job 1 -->
+      <rect x="200" y="74" width="230" height="105" rx="10" fill="#e2eeea" stroke="#0e6e63" stroke-width="1.3"/>
+      <text x="315" y="93" text-anchor="middle" class="lbl">Job: test</text>
+      <text x="315" y="108" text-anchor="middle" class="mono">runs-on: runner (เครื่อง)</text>
+      <rect x="214" y="118" width="202" height="22" rx="5" fill="#fff" stroke="#0e6e63" stroke-width="1"/><text x="315" y="133" text-anchor="middle" class="mono">step: checkout → setup → test</text>
+      <rect x="214" y="146" width="202" height="22" rx="5" fill="#fff" stroke="#0e6e63" stroke-width="1"/><text x="315" y="161" text-anchor="middle" class="mono">step รันเรียงกันบนเครื่องเดียว</text>
+      <!-- job 2 -->
+      <rect x="448" y="74" width="234" height="105" rx="10" fill="#f8ecd8" stroke="#c07415" stroke-width="1.3"/>
+      <text x="565" y="93" text-anchor="middle" class="lbl">Job: deploy</text>
+      <text x="565" y="108" text-anchor="middle" class="mono">needs: test (รอ test ผ่านก่อน)</text>
+      <rect x="462" y="118" width="206" height="22" rx="5" fill="#fff" stroke="#c07415" stroke-width="1"/><text x="565" y="133" text-anchor="middle" class="mono">step: build → push image</text>
+      <rect x="462" y="146" width="206" height="22" rx="5" fill="#fff" stroke="#c07415" stroke-width="1"/><text x="565" y="161" text-anchor="middle" class="mono">step: deploy → ตรวจสุขภาพ</text>
+      <path d="M432 126 L 446 126" class="flow" marker-end="url(#ar)"/>
+    </svg>
+    <figcaption><b>FIG 2.1</b> — ลำดับชั้น: <code>event</code> ปลุก → <code>workflow</code> (ทั้ง pipeline) → ประกอบด้วยหลาย <code>job</code> (รันขนานกันได้ แต่ละอันบน runner ของตัวเอง) → แต่ละ job มีหลาย <code>step</code> ที่รันเรียงกันบนเครื่องเดียว</figcaption>
+  </figure>
+
+  <p>จำลำดับชั้นนี้ไว้ให้แม่น เพราะมันคือโครงของทุกอย่าง:</p>
+  <table>
+    <thead><tr><th>ชั้น</th><th>คืออะไร</th><th>กฎสำคัญ</th></tr></thead>
+    <tbody>
+      <tr><td><b>Event (trigger)</b></td><td>เหตุการณ์ที่ปลุก pipeline</td><td>push, PR, tag, ตามเวลา, กดเอง</td></tr>
+      <tr><td><b>Workflow / Pipeline</b></td><td>ทั้งกระบวนการ เขียนไว้ในไฟล์ YAML</td><td>หนึ่งไฟล์ = หนึ่ง pipeline</td></tr>
+      <tr><td><b>Job</b></td><td>กลุ่มงานที่รันบนเครื่องหนึ่งเครื่อง</td><td>หลาย job <b>รันขนานกัน</b>โดยปริยาย</td></tr>
+      <tr><td><b>Step</b></td><td>คำสั่งย่อยในแต่ละ job</td><td>step <b>รันเรียงกัน</b> แชร์พื้นที่ทำงาน</td></tr>
+      <tr><td><b>Runner</b></td><td>เครื่อง (จริง/เสมือน) ที่รัน job</td><td>เริ่มสะอาดทุกครั้ง ไม่มีของค้าง</td></tr>
+    </tbody>
+  </table>
+
+  <h3>2.2 เส้นแบ่งสามระดับ: Integration → Delivery → Deployment</h3>
+  <p>คนสับสน "CD" มากที่สุด เพราะมันย่อได้สองคำที่ต่างกัน ความจริงคือมันคือ <strong>สามขั้นที่ซ้อนกันเป็นชั้น ๆ</strong> แต่ละขั้นเพิ่มความอัตโนมัติขึ้นไปอีกระดับ:</p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="สามระดับซ้อนกัน: Continuous Integration คือ build และ test อัตโนมัติ, Continuous Delivery เพิ่มการเตรียมพร้อมปล่อยแต่กดเอง, Continuous Deployment ปล่อยขึ้น production อัตโนมัติเต็มรูปแบบ">
+      <rect x="30" y="40" width="210" height="150" rx="12" fill="#e2eeea" stroke="#0e6e63" stroke-width="1.5"/>
+      <text x="135" y="66" text-anchor="middle" class="lbl">Continuous</text>
+      <text x="135" y="84" text-anchor="middle" class="lbl">Integration</text>
+      <text x="135" y="110" text-anchor="middle" class="sub">build + test ทุก commit</text>
+      <text x="135" y="128" text-anchor="middle" class="sub">อัตโนมัติ</text>
+      <text x="135" y="165" text-anchor="middle" class="mono-t">"โค้ดยังดีอยู่ไหม?"</text>
+      <rect x="255" y="40" width="210" height="150" rx="12" fill="#f8ecd8" stroke="#c07415" stroke-width="1.5"/>
+      <text x="360" y="66" text-anchor="middle" class="lbl">Continuous</text>
+      <text x="360" y="84" text-anchor="middle" class="lbl">Delivery</text>
+      <text x="360" y="110" text-anchor="middle" class="sub">CI + แพ็กพร้อมปล่อย</text>
+      <text x="360" y="128" text-anchor="middle" class="sub">แต่ "กดปล่อย" เอง 🟡</text>
+      <text x="360" y="165" text-anchor="middle" class="mono-a">"พร้อมปล่อยทุกเมื่อ"</text>
+      <rect x="480" y="40" width="210" height="150" rx="12" fill="#f6e0db" stroke="#a33327" stroke-width="1.5"/>
+      <text x="585" y="66" text-anchor="middle" class="lbl">Continuous</text>
+      <text x="585" y="84" text-anchor="middle" class="lbl">Deployment</text>
+      <text x="585" y="110" text-anchor="middle" class="sub">Delivery + ปล่อยขึ้น prod</text>
+      <text x="585" y="128" text-anchor="middle" class="sub">อัตโนมัติเต็มรูปแบบ ⚡</text>
+      <text x="585" y="165" text-anchor="middle" class="mono" style="fill:#a33327">"ผ่าน = ขึ้นจริงเลย"</text>
+      <path d="M242 115 L 253 115" class="flow" marker-end="url(#ar)"/>
+      <path d="M467 115 L 478 115" class="flow" marker-end="url(#ar)"/>
+    </svg>
+    <figcaption><b>FIG 2.2</b> — แต่ละขั้นครอบขั้นก่อนหน้าไว้ทั้งหมด · ความต่างเดียวระหว่าง Delivery กับ Deployment คือ <strong>มี "มนุษย์กดปุ่ม" คั่นก่อนขึ้น production หรือไม่</strong></figcaption>
+  </figure>
+
+  <p>เส้นแบ่งที่ต้องจำให้ขึ้นใจ: <strong>Continuous Delivery = ระบบทำให้ "พร้อมปล่อย" อัตโนมัติ แต่การกดปล่อยจริงเป็นการตัดสินใจของคน</strong> ส่วน <strong>Continuous Deployment = ตัดมนุษย์ออกจากสมการ ผ่าน CI/ทดสอบเมื่อไรก็ขึ้น production เมื่อนั้นทันที</strong> ทีมส่วนใหญ่เริ่มจาก Delivery แล้วค่อยขยับไป Deployment เมื่อความเชื่อมั่นในชุดทดสอบสูงพอ (ลงลึกในบทที่ 9)</p>
+
+  <h3>2.3 หลักการที่อยู่เบื้องหลังทั้งหมด</h3>
+  <p>ก่อนลงรายละเอียด จำหลักสามข้อนี้ไว้ มันคือ "ทำไม" ที่อยู่ใต้ทุกคำสั่งในเล่ม:</p>
+  <ul>
+    <li><strong>ทำซ้ำได้เสมอ (reproducible)</strong> — pipeline เริ่มจากเครื่องสะอาดทุกครั้ง สิ่งที่ผ่านบน CI ต้องผ่านเหมือนกันไม่ว่าใครรัน "มันรันได้บนเครื่องผม" จึงไม่ใช่ข้ออ้างอีกต่อไป</li>
+    <li><strong>เร็วเข้าไว้ (fast feedback)</strong> — pipeline ที่ใช้เวลา 40 นาทีคือ pipeline ที่ไม่มีใครรอดู ความเร็วคือฟีเจอร์</li>
+    <li><strong>ล้มให้ดัง (fail loud)</strong> — เมื่อมีอะไรพัง ต้องหยุดและแจ้งทันที ไม่ใช่ปล่อยผ่านเงียบ ๆ แล้วให้ของเสียไหลขึ้น production</li>
+  </ul>
+
+  <div class="note"><span class="t">สรุปบทที่ 2</span>pipeline = สายพานอัตโนมัติ มีลำดับชั้น event → workflow → job (ขนาน) → step (เรียง) บน runner · CI/CD คือสามชั้นซ้อนกัน: Integration (build+test) ⊂ Delivery (พร้อมปล่อย กดเอง) ⊂ Deployment (ขึ้น prod อัตโนมัติ) · เส้นแบ่ง Delivery/Deployment คือ "มีคนกดปุ่มไหม" · หลักการใต้ทุกอย่าง: ทำซ้ำได้ · เร็ว · ล้มให้ดัง</div>
+  <div class="chapter-end">· · ·</div>
+</section>
+
+<!-- ============================ CH3 ============================ -->
+<section class="chapter" id="ch3">
+  <div class="ch-head">
+    <div class="row"><div class="num">03</div><h2>Pipeline แรกของคุณ</h2></div>
+    <span class="chip" style="background:var(--l1-soft);color:var(--l1)">LEVEL 1 · พื้นฐานที่ใช้จริง</span>
+  </div>
+
+  <p>ทฤษฎีพอแล้ว มาเขียน pipeline จริงกัน เราจะใช้ <strong>GitHub Actions</strong> เป็นตัวอย่างหลักตลอดเล่ม เพราะใกล้กับเล่ม Git ที่สุดและเริ่มฟรีได้ทันที แต่ทุกแนวคิดย้ายไปแพลตฟอร์มอื่นได้ (บทที่ 14 เทียบให้ครบ) — โครงสร้างเปลี่ยน แต่ความคิดเหมือนเดิม</p>
+
+  <h3>3.1 ไฟล์เดียวที่ปลุกทุกอย่าง</h3>
+  <p>ใน GitHub Actions คุณแค่สร้างไฟล์ YAML ไว้ในโฟลเดอร์ <code>.github/workflows/</code> แล้ว push ขึ้นไป — GitHub จะเห็นและเริ่มรันให้เองทันที ไม่ต้องตั้งค่าเซิร์ฟเวอร์อะไรเลย นี่คือ pipeline ที่สมบูรณ์ที่สุดเท่าที่ใช้งานได้จริง:</p>
+  <pre><code><span class="c"># .github/workflows/ci.yml</span>
+<span class="k">name:</span> <span class="a">CI</span>
+<span class="k">on:</span>                          <span class="c"># เมื่อไรให้รัน — นี่คือ "trigger"</span>
+  <span class="k">push:</span>
+    <span class="k">branches:</span> [<span class="a">main</span>]
+  <span class="k">pull_request:</span>             <span class="c"># รันตอนเปิด/อัปเดต PR ด้วย</span>
+
+<span class="k">jobs:</span>
+  <span class="k">test:</span>                       <span class="c"># ชื่อ job (ตั้งเองได้)</span>
+    <span class="k">runs-on:</span> <span class="a">ubuntu-latest</span>    <span class="c"># รันบนเครื่อง Linux ที่ GitHub เตรียมให้</span>
+    <span class="k">steps:</span>
+      - <span class="k">uses:</span> <span class="a">actions/checkout@v4</span>      <span class="c"># 1. ดึงโค้ด repo ลงมาในเครื่อง runner</span>
+      - <span class="k">uses:</span> <span class="a">actions/setup-node@v4</span>     <span class="c"># 2. ติดตั้ง Node.js</span>
+        <span class="k">with:</span>
+          <span class="k">node-version:</span> <span class="a">20</span>
+      - <span class="k">run:</span> <span class="a">npm ci</span>                    <span class="c"># 3. ติดตั้ง dependencies</span>
+      - <span class="k">run:</span> <span class="a">npm test</span>                  <span class="c"># 4. รันชุดทดสอบ — ถ้าพัง pipeline แดงทันที</span></code></pre>
+
+  <h3>3.2 อ่าน YAML นี้ทีละชั้น</h3>
+  <p>ทุกบรรทัดแมปกับลำดับชั้นในบทที่ 2 ตรง ๆ:</p>
+  <ul>
+    <li><code>on:</code> คือ <strong>event/trigger</strong> — บอกว่าให้ปลุก pipeline เมื่อ push เข้า <code>main</code> หรือเมื่อมี PR</li>
+    <li><code>jobs:</code> ใต้นั้นคือรายการ <strong>job</strong> — ตอนนี้มีตัวเดียวชื่อ <code>test</code></li>
+    <li><code>runs-on:</code> เลือก <strong>runner</strong> — เครื่องเปล่า ๆ ที่ GitHub สร้างใหม่ให้ทุกครั้ง</li>
+    <li><code>steps:</code> คือ <strong>step</strong> ที่รันเรียงจากบนลงล่าง มีสองแบบ: <code>uses:</code> เรียกใช้ "action" สำเร็จรูปที่คนอื่นเขียนไว้ และ <code>run:</code> สั่ง shell command ตรง ๆ</li>
+  </ul>
+  <p>หัวใจอยู่ที่ step สุดท้าย: ถ้า <code>npm test</code> คืน exit code ไม่เป็นศูนย์ (เทสต์ตก) step นั้นล้มเหลว job ก็ล้มเหลว และ pipeline ขึ้นสถานะแดง — บน PR คุณจะเห็นเครื่องหมาย ✕ ทันที นี่แหละคือ "fail loud" ในทางปฏิบัติ</p>
+
+  <h3>3.3 การเริ่มสะอาดทุกครั้งคือฟีเจอร์ ไม่ใช่บั๊ก</h3>
+  <p>สังเกตว่าทำไมต้องมี <code>checkout</code> และ <code>setup-node</code> ทุกครั้ง — เพราะ runner <strong>เกิดใหม่จากศูนย์ทุกการรัน</strong> ไม่มีโค้ด ไม่มี Node ติดมาก่อน นี่คือสิ่งที่ทำให้ pipeline "ทำซ้ำได้": ไม่มีของค้างจากการรันก่อนหน้ามาปนเปื้อนผล สิ่งที่ผ่านวันนี้จะผ่านเหมือนกันในอีกหกเดือน</p>
+
+  <div class="use"><span class="t">ลองเองได้ใน 2 นาที</span>เอา repo ที่มี <code>npm test</code> อยู่แล้ว สร้างไฟล์ <code>.github/workflows/ci.yml</code> ตามด้านบน แล้ว <code>git add</code> → <code>commit</code> → <code>push</code> เปิดแท็บ <b>Actions</b> บน GitHub คุณจะเห็น pipeline เริ่มหมุนทันที — นี่คือ git push จากเล่มที่แล้ว ที่ตอนนี้ "เกิดอะไรต่อ" แล้วจริง ๆ</div>
+
+  <div class="note"><span class="t">สรุปบทที่ 3</span>pipeline = ไฟล์ YAML ใน <code>.github/workflows/</code> · <code>on:</code> กำหนด trigger, <code>jobs:</code>→<code>steps:</code> กำหนดงาน · step มีสองแบบ <code>uses:</code> (action สำเร็จรูป) และ <code>run:</code> (คำสั่ง shell) · runner เริ่มสะอาดทุกครั้งจึงต้อง checkout/setup ใหม่ — ความสะอาดนี้คือรากของการทำซ้ำได้ · เทสต์ตก = exit code ไม่เป็นศูนย์ = pipeline แดง</div>
+  <div class="chapter-end">· · ·</div>
+</section>
+
+<!-- ============================ CH4 ============================ -->
+<section class="chapter" id="ch4">
+  <div class="ch-head">
+    <div class="row"><div class="num">04</div><h2>Jobs · Steps · Runners</h2></div>
+    <span class="chip" style="background:var(--l1-soft);color:var(--l1)">LEVEL 1 · พื้นฐานที่ใช้จริง</span>
+  </div>
+
+  <p>บทที่แล้วมี job เดียว pipeline จริงมักมีหลาย job ที่ต้องประสานกัน เข้าใจกฎการทำงานร่วมของ job/step/runner แล้ว คุณจะออกแบบ pipeline ที่ทั้งเร็วและถูกต้องได้</p>
+
+  <h3>4.1 กฎทองสองข้อ: job ขนาน · step เรียง</h3>
+  <p>นี่คือจุดที่มือใหม่พลาดบ่อยที่สุด ขอย้ำให้ชัด:</p>
+  <ul>
+    <li><strong>หลาย job รันขนานกันโดยปริยาย</strong> และแต่ละ job อยู่บน <strong>runner คนละเครื่อง สะอาดแยกกัน</strong> — job หนึ่งสร้างไฟล์ไว้ อีก job มองไม่เห็น เพราะคนละเครื่อง</li>
+    <li><strong>step ภายใน job เดียวกันรันเรียงกัน</strong> บนเครื่องเดียว และ <strong>แชร์พื้นที่ทำงาน (workspace)</strong> — step แรกติดตั้งของไว้ step ถัดไปใช้ได้ทันที</li>
+  </ul>
+  <p>ผลที่ตามมาในทางปฏิบัติ: งานที่ต้อง "ส่งของต่อกัน" ให้ใส่เป็น step ใน.job เดียว ส่วนงานที่อิสระต่อกัน (เช่น เทสต์ frontend กับ backend) ให้แยกเป็นคนละ job จะได้รันพร้อมกัน เร็วขึ้น</p>
+
+  <h3>4.2 needs — บังคับลำดับเมื่อ job ต้องพึ่งกัน</h3>
+  <p>บางที job ต้องรอกัน เช่น <code>deploy</code> ต้องรอ <code>test</code> ผ่านก่อน ใช้ <code>needs:</code> เพื่อสร้างความสัมพันธ์นั้น — มันเปลี่ยน job ที่เคยขนานให้กลายเป็นกราฟลำดับ (เหมือนสาย commit ในเล่ม Git):</p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="job lint และ test รันขนานกัน แล้ว job build รอทั้งสองด้วย needs จากนั้น deploy รอ build อีกที">
+      <rect x="40" y="40" width="150" height="50" rx="10" fill="#e2eeea" stroke="#0e6e63" stroke-width="1.4"/><text x="115" y="62" text-anchor="middle" class="lbl">lint</text><text x="115" y="79" text-anchor="middle" class="mono">ตรวจสไตล์โค้ด</text>
+      <rect x="40" y="130" width="150" height="50" rx="10" fill="#e2eeea" stroke="#0e6e63" stroke-width="1.4"/><text x="115" y="152" text-anchor="middle" class="lbl">test</text><text x="115" y="169" text-anchor="middle" class="mono">รันชุดทดสอบ</text>
+      <text x="115" y="22" text-anchor="middle" class="mono-t">ขนานกัน (ไม่มี needs)</text>
+      <rect x="290" y="85" width="150" height="50" rx="10" fill="#f8ecd8" stroke="#c07415" stroke-width="1.4"/><text x="365" y="107" text-anchor="middle" class="lbl">build</text><text x="365" y="124" text-anchor="middle" class="mono">needs: [lint, test]</text>
+      <rect x="540" y="85" width="150" height="50" rx="10" fill="#f6e0db" stroke="#a33327" stroke-width="1.4"/><text x="615" y="107" text-anchor="middle" class="lbl">deploy</text><text x="615" y="124" text-anchor="middle" class="mono">needs: build</text>
+      <path d="M192 75 C 240 85, 250 100, 288 105" class="flow-a" marker-end="url(#ar-a)"/>
+      <path d="M192 150 C 240 140, 250 122, 288 116" class="flow-a" marker-end="url(#ar-a)"/>
+      <path d="M442 110 L 536 110" class="flow-r" marker-end="url(#ar-r)"/>
+    </svg>
+    <figcaption><b>FIG 4.1</b> — <code>lint</code> กับ <code>test</code> ไม่พึ่งใครจึงรันพร้อมกัน · <code>build</code> ใส่ <code>needs: [lint, test]</code> จึงรอให้ทั้งสองผ่านก่อน · ถ้า job ที่ถูก needs ล้มเหลว job ที่รออยู่จะถูกข้าม (ไม่รัน) ทันที</figcaption>
+  </figure>
+
+  <pre><code><span class="k">jobs:</span>
+  <span class="k">lint:</span>
+    <span class="k">runs-on:</span> <span class="a">ubuntu-latest</span>
+    <span class="k">steps:</span> [ <span class="c">... รัน linter ...</span> ]
+  <span class="k">test:</span>
+    <span class="k">runs-on:</span> <span class="a">ubuntu-latest</span>
+    <span class="k">steps:</span> [ <span class="c">... รันเทสต์ ...</span> ]
+  <span class="k">build:</span>
+    <span class="k">needs:</span> [<span class="a">lint</span>, <span class="a">test</span>]      <span class="c"># รอ lint และ test ผ่านทั้งคู่ก่อน</span>
+    <span class="k">runs-on:</span> <span class="a">ubuntu-latest</span>
+    <span class="k">steps:</span> [ <span class="c">... build โปรเจกต์ ...</span> ]</code></pre>
+
+  <h3>4.3 Runner — เครื่องที่ลงมือทำจริง</h3>
+  <p><strong>Runner</strong> คือเครื่อง (จริงหรือเสมือน) ที่รับ job ไปรันจริง มีสองแบบใหญ่ ๆ ซึ่งเราจะลงลึกในบทที่ 13:</p>
+  <ul>
+    <li><strong>Hosted runner</strong> — แพลตฟอร์มเตรียมให้ (เช่น <code>ubuntu-latest</code>, <code>windows-latest</code>) เกิดใหม่สะอาดทุกครั้ง ไม่ต้องดูแล เหมาะกับงานทั่วไป</li>
+    <li><strong>Self-hosted runner</strong> — เครื่องของคุณเองที่ลงโปรแกรม runner ไว้ ใช้เมื่อต้องการฮาร์ดแวร์พิเศษ (GPU), เข้าถึงเครือข่ายภายใน, หรือคุมค่าใช้จ่าย</li>
+  </ul>
+
+  <div class="warn"><span class="t">กับดักที่พบบ่อย: คาดหวังให้ job เห็นไฟล์ของกันและกัน</span>เพราะแต่ละ job อยู่คนละเครื่อง ไฟล์ที่ job <code>build</code> สร้าง <strong>จะไม่โผล่ใน job <code>deploy</code> เองอัตโนมัติ</strong> แม้จะใส่ <code>needs:</code> แล้วก็ตาม — <code>needs</code> คุมแค่ "ลำดับ" ไม่ได้ส่ง "ไฟล์" การส่งไฟล์ข้าม job ต้องใช้ <strong>artifact</strong> (บทที่ 6)</div>
+
+  <div class="note"><span class="t">สรุปบทที่ 4</span>หลาย job รันขนานบน runner แยกเครื่องสะอาด · step ใน job เดียวรันเรียงและแชร์ workspace · <code>needs:</code> สร้างลำดับเมื่อ job ต้องพึ่งกัน และข้าม job ถัดไปถ้าตัวที่พึ่งล้ม · runner มี hosted (สะดวก) และ self-hosted (คุมเอง) · <code>needs</code> คุมลำดับ ไม่ได้ส่งไฟล์ — ส่งไฟล์ข้าม job ต้องใช้ artifact</div>
+  <div class="chapter-end">· · ·</div>
+</section>
+
+<!-- ============================ CH5 ============================ -->
+<section class="chapter" id="ch5">
+  <div class="ch-head">
+    <div class="row"><div class="num">05</div><h2>Build · Test · Lint — สามเสาหลักของ CI</h2></div>
+    <span class="chip" style="background:var(--l1-soft);color:var(--l1)">LEVEL 1 · พื้นฐานที่ใช้จริง</span>
+  </div>
+
+  <p>CI ที่ดีไม่ได้วัดที่ "มี pipeline" แต่วัดที่ "ตรวจอะไรบ้าง" สามเสาหลักต่อไปนี้คือด่านมาตรฐานที่ทุก pipeline ควรมี เรียงจากเร็ว/ถูกไปช้า/แพง เพื่อให้ "ล้มเร็ว" — ด่านที่ถูกที่สุดควรล้มก่อน</p>
+
+  <h3>5.1 Lint — ด่านที่ถูกและเร็วที่สุด</h3>
+  <p><strong>Lint</strong> คือการตรวจรูปแบบและกลิ่นของโค้ดโดยไม่ต้องรัน เช่น ตัวแปรที่ประกาศแล้วไม่ใช้, การจัดรูปแบบไม่สม่ำเสมอ, รูปแบบที่เสี่ยงบั๊ก มันเร็วมาก (วินาที) จึงควรเป็นด่านแรก ๆ — ไม่มีเหตุผลที่จะปล่อยให้เทสต์ที่ใช้เวลา 5 นาทีรันไปก่อน ทั้งที่โค้ดมี syntax ผิดที่ lint จับได้ใน 3 วินาที</p>
+
+  <h3>5.2 Test — หัวใจของ CI</h3>
+  <p>เทสต์อัตโนมัติคือสิ่งที่ทำให้ CI มีความหมาย เพราะมันคือสิ่งที่ "ตอบแทนคุณ" ว่าการเปลี่ยนแปลงไม่ทำของเดิมพัง โดยทั่วไปแบ่งเป็นชั้น ๆ ตามต้นทุน/ความเร็ว เรียกว่า <strong>testing pyramid</strong>:</p>
+  <table>
+    <thead><tr><th>ชั้น</th><th>ตรวจอะไร</th><th>ความเร็ว / จำนวน</th></tr></thead>
+    <tbody>
+      <tr><td><b>Unit</b></td><td>ฟังก์ชัน/หน่วยเล็กที่สุด แยกเดี่ยว</td><td>เร็วมาก · มีเยอะที่สุด</td></tr>
+      <tr><td><b>Integration</b></td><td>หลายส่วนทำงานร่วมกัน (เช่น โค้ด + ฐานข้อมูล)</td><td>ปานกลาง · มีพอประมาณ</td></tr>
+      <tr><td><b>End-to-End (E2E)</b></td><td>ทั้งระบบเหมือนผู้ใช้จริงกดใช้งาน</td><td>ช้า/เปราะ · มีน้อยที่สุด</td></tr>
+    </tbody>
+  </table>
+  <p>หลักคือ <strong>มี unit test เยอะ ๆ (เร็ว ถูก) เป็นฐาน แล้วมี E2E น้อย ๆ (ช้า แพง) ไว้บนยอด</strong> pipeline ฉลาด ๆ จะรัน unit ก่อนเพื่อล้มเร็ว แล้วค่อยลงทุนรัน E2E เมื่อชั้นล่างผ่านแล้ว</p>
+
+  <h3>5.3 Build — พิสูจน์ว่ามันประกอบเป็นของจริงได้</h3>
+  <p>การ build (คอมไพล์/แพ็ก) ใน CI พิสูจน์ว่าโค้ดไม่ใช่แค่ "เทสต์ผ่าน" แต่ "ประกอบออกมาเป็น artifact ที่ deploy ได้จริง" สำหรับภาษาที่คอมไพล์ ขั้นนี้จับ type error และปัญหา dependency ได้ ส่วนงานยุคใหม่มักจบที่การสร้าง <strong>container image</strong> ที่จะถูกส่งต่อไป deploy ในฝั่ง CD</p>
+
+  <h3>5.4 เชื่อม CI กลับเข้า Git: status check &amp; branch protection</h3>
+  <p>นี่คือจุดที่ CI กับ Git บรรจบกันอย่างทรงพลัง ผลของ pipeline (เขียว/แดง) จะแสดงเป็น <strong>status check</strong> บน Pull Request และคุณตั้ง <strong>branch protection</strong> ให้ <code>main</code> ได้ว่า <strong>"ห้าม merge PR เข้ามาถ้า CI ยังไม่เขียว"</strong> — เท่ากับเปลี่ยน "ควรรันเทสต์นะ" (วินัยที่คนลืม) ให้เป็น "ระบบไม่ยอมให้ผ่านถ้าเทสต์ตก" (กฎที่บังคับเอง)</p>
+
+  <div class="use"><span class="t">ต่อจากบทที่ 9 ของเล่ม Git</span>จำ Pull Request ได้ไหม — branch protection คือสิ่งที่เปลี่ยน PR จาก "ที่ขอให้รีวิว" ให้กลายเป็น "ประตูที่มีด่านอัตโนมัติเฝ้า" ทีมจริงจังมักบังคับทั้งสองอย่าง: ต้องมีคนรีวิวอนุมัติ <strong>และ</strong> CI ต้องเขียว ถึงจะกดปุ่ม merge ได้</div>
+
+  <div class="note"><span class="t">สรุปบทที่ 5</span>สามเสาหลัก เรียงจากถูก/เร็วไปแพง/ช้า: <strong>lint → test → build</strong> ให้ด่านถูกล้มก่อน · เทสต์เป็นพีระมิด: unit เยอะ (ฐาน) E2E น้อย (ยอด) · build พิสูจน์ว่าประกอบเป็น artifact จริงได้ · ผูก CI กลับเข้า Git ด้วย status check + branch protection เพื่อบังคับว่า "CI ไม่เขียว = merge ไม่ได้"</div>
+  <div class="chapter-end">· · ·</div>
+</section>
+
+<!-- ============================ CH6 ============================ -->
+<section class="chapter" id="ch6">
+  <div class="ch-head">
+    <div class="row"><div class="num">06</div><h2>Artifacts &amp; Caching</h2></div>
+    <span class="chip" style="background:var(--l2-soft);color:var(--l2)">LEVEL 2 · ระดับกลาง</span>
+  </div>
+
+  <p>สองคำนี้คือ "fetch กับ pull" แห่งโลก CI/CD — ฟังดูคล้ายกันจนคนสับสนตลอด แต่จุดประสงค์ต่างกันสิ้นเชิง เข้าใจเส้นแบ่งนี้แล้ว pipeline ของคุณจะทั้งเร็วขึ้นและส่งของต่อกันได้ถูกต้อง</p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 720 235" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="artifact ส่งผลลัพธ์การ build ข้าม job เพื่อใช้งานต่อ ส่วน cache เก็บ dependencies ไว้ใช้ซ้ำในการรันครั้งหน้าเพื่อความเร็ว">
+      <text x="180" y="24" text-anchor="middle" class="lbl">Artifact — ส่ง "ผลงาน" ข้าม job</text>
+      <rect x="40" y="50" width="120" height="48" rx="9" fill="#e2eeea" stroke="#0e6e63" stroke-width="1.3"/><text x="100" y="71" text-anchor="middle" class="lbl">job: build</text><text x="100" y="88" text-anchor="middle" class="mono">สร้าง dist/</text>
+      <rect x="220" y="50" width="120" height="48" rx="9" fill="#f8ecd8" stroke="#c07415" stroke-width="1.3"/><text x="280" y="71" text-anchor="middle" class="lbl">job: deploy</text><text x="280" y="88" text-anchor="middle" class="mono">เอา dist/ ไปใช้</text>
+      <path d="M162 74 L 218 74" class="flow-t" marker-end="url(#ar-t)"/>
+      <text x="190" y="120" text-anchor="middle" class="mono-t">upload → download</text>
+      <text x="190" y="136" text-anchor="middle" class="mono">"ของจริงที่ต้องส่งต่อ"</text>
+      <line x1="370" y1="20" x2="370" y2="220" stroke="#ddd5c6"/>
+      <text x="545" y="24" text-anchor="middle" class="lbl">Cache — ใช้ซ้ำข้าม "การรัน"</text>
+      <rect x="430" y="50" width="115" height="48" rx="9" fill="#fff" stroke="#54625f" stroke-width="1.3"/><text x="487" y="71" text-anchor="middle" class="lbl">รันครั้งที่ 1</text><text x="487" y="88" text-anchor="middle" class="mono">โหลด deps 90s</text>
+      <rect x="585" y="50" width="115" height="48" rx="9" fill="#fff" stroke="#54625f" stroke-width="1.3"/><text x="642" y="71" text-anchor="middle" class="lbl">รันครั้งที่ 2</text><text x="642" y="88" text-anchor="middle" class="mono">ใช้ cache 5s</text>
+      <path d="M487 100 C 487 140, 642 140, 642 100" class="flow-a" marker-end="url(#ar-a)"/>
+      <text x="565" y="165" text-anchor="middle" class="mono-a">เก็บ node_modules/ ไว้</text>
+      <text x="565" y="181" text-anchor="middle" class="mono">"ของชั่วคราวเพื่อความเร็ว — หายได้ไม่เป็นไร"</text>
+    </svg>
+    <figcaption><b>FIG 6.1</b> — <strong>artifact</strong> ส่งผลลัพธ์ที่ "ต้องใช้ต่อ" ข้าม job ในการรันเดียวกัน · <strong>cache</strong> เก็บของที่ "สร้างใหม่ได้" ไว้ใช้ซ้ำข้ามการรัน เพื่อความเร็วล้วน ๆ</figcaption>
+  </figure>
+
+  <h3>6.1 Artifact — ผลงานที่ต้องส่งต่อ</h3>
+  <p>จำกับดักจากบทที่ 4: job คนละเครื่อง ส่งไฟล์หากันเองไม่ได้ <strong>artifact</strong> คือสะพานนั้น — job <code>build</code> "upload" ผลลัพธ์ (เช่นโฟลเดอร์ <code>dist/</code> หรือไฟล์ <code>.jar</code>) ขึ้นที่เก็บกลาง แล้ว job <code>deploy</code> "download" กลับลงมาใช้ artifact เป็น <strong>ของที่มีคุณค่า ต้องเก็บไว้ใช้ต่อ</strong> และมักดาวน์โหลดมาดูภายหลังได้ด้วย</p>
+  <pre><code><span class="c"># ใน job build — อัปโหลดผลลัพธ์</span>
+- <span class="k">uses:</span> <span class="a">actions/upload-artifact@v4</span>
+  <span class="k">with:</span>
+    <span class="k">name:</span> <span class="a">dist</span>
+    <span class="k">path:</span> <span class="a">dist/</span>
+<span class="c"># ใน job deploy — ดาวน์โหลดกลับมา</span>
+- <span class="k">uses:</span> <span class="a">actions/download-artifact@v4</span>
+  <span class="k">with:</span>
+    <span class="k">name:</span> <span class="a">dist</span></code></pre>
+
+  <h3>6.2 Cache — ความเร็วที่ทิ้งได้</h3>
+  <p>การติดตั้ง dependencies (npm, pip, Maven) ซ้ำทุกครั้งเสียเวลามาก ทั้งที่มันแทบไม่เปลี่ยน <strong>cache</strong> แก้ตรงนี้: เก็บโฟลเดอร์ที่ "สร้างใหม่ได้" (เช่น <code>node_modules/</code>) ไว้ใช้ซ้ำในการรันครั้งหน้า ต่างจาก artifact ตรงที่ <strong>cache หายได้โดยไม่กระทบความถูกต้อง</strong> — แค่ทำให้ช้าลง pipeline ก็ยังรันได้เหมือนเดิม</p>
+  <pre><code>- <span class="k">uses:</span> <span class="a">actions/cache@v4</span>
+  <span class="k">with:</span>
+    <span class="k">path:</span> <span class="a">~/.npm</span>
+    <span class="k">key:</span> <span class="a">npm-${{ hashFiles('package-lock.json') }}</span>   <span class="c"># key เปลี่ยนเมื่อ lock เปลี่ยน</span></code></pre>
+  <p>เคล็ดอยู่ที่ <strong>cache key</strong>: ผูกกับ hash ของไฟล์ lock — ถ้า dependencies ไม่เปลี่ยน key เดิม ใช้ cache เดิม เร็วปรู๊ด; ถ้า lock เปลี่ยน key เปลี่ยน Git สร้าง cache ใหม่ให้ ไม่มีทางใช้ของเก่าผิดเวอร์ชัน</p>
+
+  <table>
+    <thead><tr><th></th><th>Artifact</th><th>Cache</th></tr></thead>
+    <tbody>
+      <tr><td><b>เพื่ออะไร</b></td><td>ส่งผลลัพธ์ข้าม job / เก็บไว้ดู</td><td>เร่งความเร็วด้วยการใช้ซ้ำ</td></tr>
+      <tr><td><b>ถ้าหายไป</b></td><td>pipeline พัง— เพราะ deploy ไม่มีของ</td><td>แค่ช้าลง — สร้างใหม่ได้</td></tr>
+      <tr><td><b>ขอบเขต</b></td><td>ภายในการรันเดียว (ข้าม job)</td><td>ข้ามการรัน (ข้ามเวลา)</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note"><span class="t">สรุปบทที่ 6</span><strong>artifact</strong> = ส่ง "ผลงานที่ต้องใช้ต่อ" ข้าม job (build→deploy) ถ้าหาย pipeline พัง · <strong>cache</strong> = เก็บ "ของที่สร้างใหม่ได้" (deps) ไว้ใช้ซ้ำข้ามการรันเพื่อความเร็ว ถ้าหายแค่ช้าลง · cache key ผูกกับ hash ของ lock file เพื่อกันใช้ของเก่าผิดเวอร์ชัน</div>
+  <div class="chapter-end">· · ·</div>
+</section>
+
+<!-- ============================ CH7 ============================ -->
+<section class="chapter" id="ch7">
+  <div class="ch-head">
+    <div class="row"><div class="num">07</div><h2>Matrix &amp; การขนานงาน</h2></div>
+    <span class="chip" style="background:var(--l2-soft);color:var(--l2)">LEVEL 2 · ระดับกลาง</span>
+  </div>
+
+  <p>ถ้าโปรแกรมของคุณต้องทำงานได้บน Node 18, 20 และ 22 ทั้งบน Linux และ Windows คุณจะเขียน job ซ้ำกัน 6 อันไหม? ไม่ต้อง — <strong>matrix</strong> คือเครื่องมือที่สร้างชุด job ขนานให้อัตโนมัติจากการประกาศมิติเพียงไม่กี่บรรทัด</p>
+
+  <h3>7.1 Matrix — ทดสอบหลายมิติพร้อมกัน</h3>
+  <figure class="fig">
+    <svg viewBox="0 0 720 215" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="การประกาศ matrix สองมิติ Node เวอร์ชันและระบบปฏิบัติการ ขยายออกเป็นหก job ที่รันขนานกันทั้งหมด">
+      <rect x="30" y="80" width="150" height="56" rx="10" fill="#faf7f1" stroke="#c07415" stroke-width="1.5"/>
+      <text x="105" y="103" text-anchor="middle" class="lbl">matrix</text>
+      <text x="105" y="120" text-anchor="middle" class="mono">node × os</text>
+      <path d="M182 108 L 230 108" class="flow-a" marker-end="url(#ar-a)"/>
+      <text x="360" y="22" text-anchor="middle" class="mono-a">ขยายเป็น 3 × 2 = 6 job รันพร้อมกันทั้งหมด</text>
+      <g>
+        <rect x="240" y="40" width="135" height="26" rx="6" fill="#e2eeea" stroke="#0e6e63"/><text x="307" y="57" text-anchor="middle" class="mono">node18 · ubuntu</text>
+        <rect x="240" y="72" width="135" height="26" rx="6" fill="#e2eeea" stroke="#0e6e63"/><text x="307" y="89" text-anchor="middle" class="mono">node20 · ubuntu</text>
+        <rect x="240" y="104" width="135" height="26" rx="6" fill="#e2eeea" stroke="#0e6e63"/><text x="307" y="121" text-anchor="middle" class="mono">node22 · ubuntu</text>
+        <rect x="390" y="40" width="135" height="26" rx="6" fill="#f8ecd8" stroke="#c07415"/><text x="457" y="57" text-anchor="middle" class="mono">node18 · windows</text>
+        <rect x="390" y="72" width="135" height="26" rx="6" fill="#f8ecd8" stroke="#c07415"/><text x="457" y="89" text-anchor="middle" class="mono">node20 · windows</text>
+        <rect x="390" y="104" width="135" height="26" rx="6" fill="#f8ecd8" stroke="#c07415"/><text x="457" y="121" text-anchor="middle" class="mono">node22 · windows</text>
+      </g>
+      <text x="380" y="170" text-anchor="middle" class="sub">แต่ละช่องคือ job อิสระบน runner ของตัวเอง — ตกช่องไหนรู้ทันทีว่าพังที่ combination ไหน</text>
+    </svg>
+    <figcaption><b>FIG 7.1</b> — ประกาศสองมิติ Git ขยายเป็นทุกคู่ผสม (cartesian product) แล้วรันขนานกันหมด · ครอบคลุมหลายสภาพแวดล้อมโดยเขียนครั้งเดียว</figcaption>
+  </figure>
+
+  <pre><code><span class="k">jobs:</span>
+  <span class="k">test:</span>
+    <span class="k">strategy:</span>
+      <span class="k">fail-fast:</span> <span class="a">false</span>          <span class="c"># ช่องหนึ่งตก ไม่ยกเลิกช่องอื่น — เห็นภาพครบ</span>
+      <span class="k">matrix:</span>
+        <span class="k">node:</span> [<span class="a">18</span>, <span class="a">20</span>, <span class="a">22</span>]
+        <span class="k">os:</span> [<span class="a">ubuntu-latest</span>, <span class="a">windows-latest</span>]
+    <span class="k">runs-on:</span> <span class="a">${{ matrix.os }}</span>     <span class="c"># แต่ละ job หยิบค่าจากช่องของตัวเอง</span>
+    <span class="k">steps:</span>
+      - <span class="k">uses:</span> <span class="a">actions/setup-node@v4</span>
+        <span class="k">with:</span>
+          <span class="k">node-version:</span> <span class="a">${{ matrix.node }}</span></code></pre>
+
+  <h3>7.2 fail-fast — เห็นภาพครบ หรือ ประหยัดทรัพยากร</h3>
+  <p><code>fail-fast: true</code> (ค่าเริ่มต้น) หมายถึง "พอช่องใดช่องหนึ่งตก ให้ยกเลิกช่องที่เหลือทันที" — ประหยัดเวลา/เครื่อง เหมาะตอนแค่อยากรู้ว่า "ผ่านหรือไม่ผ่าน" ส่วน <code>fail-fast: false</code> ปล่อยให้ทุกช่องรันจบ เหมาะตอน debug เพราะคุณอยากเห็นว่า <strong>พังเฉพาะ Windows + Node 18 หรือพังทุกที่</strong> — ข้อมูลนี้ชี้ต้นตอได้ทันที</p>
+
+  <h3>7.3 ความเร็วรวมของ pipeline</h3>
+  <p>เพราะ job ขนานกัน เวลารวมของ pipeline ไม่ใช่ผลบวกของทุก job แต่เท่ากับ <strong>เส้นทางที่ยาวที่สุด (critical path)</strong> เหมือนหลายคนช่วยกันทำงานพร้อมกัน งานเสร็จเมื่อคนที่ช้าที่สุดเสร็จ การออกแบบ pipeline ให้เร็วจึงเป็นเรื่องของ "แตกงานอิสระให้ขนานกันให้มากที่สุด แล้วไล่บีบ job ที่อยู่บนเส้นทางวิกฤต"</p>
+
+  <div class="note"><span class="t">สรุปบทที่ 7</span><strong>matrix</strong> ขยายมิติที่ประกาศ (เช่น node × os) เป็นชุด job ขนานอัตโนมัติ ครอบคลุมหลายสภาพแวดล้อมด้วยโค้ดครั้งเดียว · <code>fail-fast: false</code> ให้ทุกช่องรันจบเพื่อเห็นภาพครบตอน debug · เวลารวมของ pipeline = เส้นทางที่ยาวที่สุด ไม่ใช่ผลบวก — เร่งได้ด้วยการขนานงานอิสระ</div>
+  <div class="chapter-end">· · ·</div>
+</section>
+
+<!-- ============================ CH8 ============================ -->
+<section class="chapter" id="ch8">
+  <div class="ch-head">
+    <div class="row"><div class="num">08</div><h2>Secrets &amp; ตัวแปร</h2></div>
+    <span class="chip" style="background:var(--l2-soft);color:var(--l2)">LEVEL 2 · ระดับกลาง</span>
+  </div>
+
+  <p>pipeline ที่ deploy จริงต้องใช้ความลับ: รหัส API, token, รหัสฐานข้อมูล แต่ความลับเหล่านี้ <strong>ห้ามอยู่ในโค้ดเด็ดขาด</strong> เพราะทุกอย่างใน Git ถูกบันทึกถาวรและกระจายไปทุก clone (จำคำเตือนเรื่อง <code>.env</code> ในบทที่ 3 ของเล่ม Git ได้ไหม) บทนี้คือวิธีจัดการความลับให้ถูกต้อง</p>
+
+  <h3>8.1 ตัวแปรกับความลับ — ต่างกันที่ "ความไว"</h3>
+  <table>
+    <thead><tr><th></th><th>Variable (ตัวแปรธรรมดา)</th><th>Secret (ความลับ)</th></tr></thead>
+    <tbody>
+      <tr><td><b>เก็บอะไร</b></td><td>ค่าที่ไม่ลับ เช่น ชื่อ environment, region, ระดับ log</td><td>ค่าที่รั่วไม่ได้ เช่น token, รหัสผ่าน, private key</td></tr>
+      <tr><td><b>มองเห็นไหม</b></td><td>เห็นในล็อกได้ตามปกติ</td><td>ถูก <b>mask</b> เป็น <code>***</code> ในล็อกอัตโนมัติ</td></tr>
+      <tr><td><b>เก็บที่ไหน</b></td><td>ในไฟล์ YAML หรือ settings ก็ได้</td><td>ใน secret store ของแพลตฟอร์มเท่านั้น</td></tr>
+    </tbody>
+  </table>
+
+  <h3>8.2 ใช้ secret อย่างถูกวิธี</h3>
+  <p>คุณตั้งค่า secret ไว้ใน settings ของ repo (ไม่ใช่ในไฟล์) แล้วอ้างถึงด้วยไวยากรณ์พิเศษ — ค่าจริงจะถูกฉีดเข้ามาตอนรันเท่านั้น และถูกปิดบังในล็อก:</p>
+  <pre><code><span class="k">steps:</span>
+  - <span class="k">run:</span> <span class="a">./deploy.sh</span>
+    <span class="k">env:</span>
+      <span class="k">API_TOKEN:</span> <span class="a">${{ secrets.API_TOKEN }}</span>    <span class="c"># ดึงจาก secret store, mask อัตโนมัติ</span>
+      <span class="k">DB_PASSWORD:</span> <span class="a">${{ secrets.DB_PASSWORD }}</span></code></pre>
+  <p>กลไกการ <strong>mask</strong> สำคัญมาก: ต่อให้สคริปต์ของคุณเผลอ <code>echo</code> ค่า secret ออกมา แพลตฟอร์มจะแทนที่ด้วย <code>***</code> ในล็อกให้ก่อนแสดง — เป็นตาข่ายกันพลาดชั้นสุดท้าย (แต่อย่าพึ่งมันแทนความระมัดระวัง)</p>
+
+  <h3>8.3 ขอบเขตและการสืบทอด</h3>
+  <p>แพลตฟอร์มสมัยใหม่ให้ตั้ง secret ได้หลายระดับ: ระดับ organization (ใช้ร่วมหลาย repo), ระดับ repo, และระดับ <strong>environment</strong> (เช่น secret ของ production แยกจาก staging — บทที่ 10) หลักคือ <strong>ให้สิทธิ์น้อยที่สุดเท่าที่จำเป็น</strong>: secret ของ production ไม่ควรเข้าถึงได้จาก pipeline ของ branch ทดลอง</p>
+
+  <div class="warn"><span class="t">กับดักร้ายแรง: secret กับ PR จากภายนอก (fork)</span>ใน open-source ใคร ๆ ก็ส่ง PR จาก fork มาได้ ถ้า pipeline ปล่อยให้โค้ดจาก PR ที่ไม่น่าเชื่อถือเข้าถึง secret ได้ คนร้ายเขียนโค้ดขโมย token ส่งออกไปได้ทันที — นี่คือช่องโหว่ <strong>pwn request</strong> ที่เกิดจริงบ่อย ด้วยเหตุนี้แพลตฟอร์มจึงไม่ส่ง secret ให้ workflow ที่ทริกเกอร์จาก fork โดยปริยาย อย่าหาทาง "ปลดล็อก" มันโดยไม่เข้าใจความเสี่ยง (ลงลึกบทที่ 12)</div>
+
+  <div class="note"><span class="t">สรุปบทที่ 8</span>ความลับห้ามอยู่ในโค้ด/Git เด็ดขาด · variable = ค่าไม่ลับ (เห็นในล็อกได้), secret = ค่าไว (mask เป็น <code>***</code> อัตโนมัติ เก็บใน secret store) · อ้างด้วย <code>${{ secrets.X }}</code> ฉีดเข้าตอนรันเท่านั้น · ตั้ง secret หลายระดับและให้สิทธิ์น้อยที่สุด · ระวัง PR จาก fork เข้าถึง secret — ช่องโหว่ pwn request</div>
+  <div class="chapter-end">· · ·</div>
+</section>
+
+<!-- ============================ CH9 ============================ -->
+<section class="chapter" id="ch9">
+  <div class="ch-head">
+    <div class="row"><div class="num">09</div><h2>CI → CD: Delivery vs Deployment</h2></div>
+    <span class="chip" style="background:var(--l3-soft);color:var(--l3)">LEVEL 3 · เข้าสู่ CD</span>
+  </div>
+
+  <p>ถึงครึ่งหลังของเล่ม — เราข้ามจาก "ตรวจว่าโค้ดดี" (CI) ไปสู่ "ส่งโค้ดขึ้นใช้งานจริง" (CD) บทนี้ปักหมุดเส้นแบ่งที่บทที่ 2 เกริ่นไว้ ให้ชัดถึงระดับปฏิบัติ เพราะการเลือกผิดระหว่าง Delivery กับ Deployment คือการเลือกระดับความเสี่ยงที่ทีมรับได้</p>
+
+  <h3>9.1 เส้นแบ่งเดียว: ใครเป็นคนกดปุ่มขึ้น production</h3>
+  <figure class="fig">
+    <svg viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ทั้งสองแบบใช้ CI และ build เหมือนกัน Continuous Delivery มีประตูอนุมัติของมนุษย์ก่อนขึ้น production ส่วน Continuous Deployment ขึ้น production อัตโนมัติทันทีที่ผ่าน">
+      <!-- shared -->
+      <rect x="30" y="40" width="105" height="44" rx="9" fill="#e2eeea" stroke="#0e6e63" stroke-width="1.3"/><text x="82" y="60" text-anchor="middle" class="lbl">CI</text><text x="82" y="76" text-anchor="middle" class="mono">test</text>
+      <rect x="155" y="40" width="105" height="44" rx="9" fill="#e2eeea" stroke="#0e6e63" stroke-width="1.3"/><text x="207" y="60" text-anchor="middle" class="lbl">build</text><text x="207" y="76" text-anchor="middle" class="mono">artifact</text>
+      <path d="M137 62 L 153 62" class="flow-t" marker-end="url(#ar-t)"/>
+      <path d="M262 62 L 300 62" class="flow" marker-end="url(#ar)"/>
+      <text x="145" y="22" text-anchor="middle" class="sub">เหมือนกันทั้งสองแบบ จนถึงตรงนี้</text>
+      <!-- delivery -->
+      <rect x="305" y="32" width="115" height="60" rx="9" fill="#f8ecd8" stroke="#c07415" stroke-width="1.5"/><text x="362" y="55" text-anchor="middle" class="lbl">👤 อนุมัติ</text><text x="362" y="73" text-anchor="middle" class="mono">มนุษย์กดปุ่ม</text><text x="362" y="86" text-anchor="middle" class="mono">(manual gate)</text>
+      <rect x="450" y="40" width="115" height="44" rx="9" fill="#f6e0db" stroke="#a33327" stroke-width="1.3"/><text x="507" y="60" text-anchor="middle" class="lbl">production</text>
+      <path d="M422 62 L 448 62" class="flow-a" marker-end="url(#ar-a)"/>
+      <text x="300" y="110" class="mono-a">Continuous Delivery — "พร้อมเสมอ แต่คนเลือกเวลาปล่อย"</text>
+      <!-- deployment -->
+      <rect x="305" y="150" width="115" height="44" rx="9" fill="#f6e0db" stroke="#a33327" stroke-width="1.3"/><text x="362" y="170" text-anchor="middle" class="lbl">production</text><text x="362" y="186" text-anchor="middle" class="mono">ขึ้นทันที ⚡</text>
+      <path d="M255 172 C 280 172, 285 172, 303 172" class="flow-r" marker-end="url(#ar-r)"/>
+      <path d="M207 86 L 207 172 L 253 172" class="flow-r"/>
+      <text x="300" y="210" class="mono" style="fill:#a33327">Continuous Deployment — "ผ่าน CI = ขึ้น production เอง ไม่มีคนคั่น"</text>
+    </svg>
+    <figcaption><b>FIG 9.1</b> — สองแบบใช้ CI/build ชุดเดียวกัน · <strong>Delivery</strong> แทรก "ประตูอนุมัติของมนุษย์" ก่อน production · <strong>Deployment</strong> ตัดประตูนั้นออก ผ่านเมื่อไรขึ้นเมื่อนั้น</figcaption>
+  </figure>
+
+  <h3>9.2 แล้วควรเลือกแบบไหน</h3>
+  <table>
+    <thead><tr><th></th><th>Continuous Delivery</th><th>Continuous Deployment</th></tr></thead>
+    <tbody>
+      <tr><td><b>การขึ้น prod</b></td><td>อัตโนมัติถึงประตู แล้วคนกดอนุมัติ</td><td>อัตโนมัติทั้งเส้น ไม่มีคนคั่น</td></tr>
+      <tr><td><b>ต้องการ</b></td><td>ความเชื่อมั่นปานกลาง + จังหวะที่คนคุม</td><td>ชุดทดสอบ + monitoring ที่เชื่อมั่นสูงมาก</td></tr>
+      <tr><td><b>เหมาะกับ</b></td><td>ระบบที่ปล่อยผิดแล้วกระทบหนัก, มีข้อบังคับ</td><td>เว็บ/บริการที่ปล่อยถี่ ๆ และ rollback ได้เร็ว</td></tr>
+      <tr><td><b>ความถี่ปล่อย</b></td><td>เมื่อทีมพร้อม (วัน/สัปดาห์)</td><td>หลายครั้งต่อวันได้</td></tr>
+    </tbody>
+  </table>
+  <p>คำแนะนำเชิงปฏิบัติ: <strong>เริ่มที่ Continuous Delivery เกือบทุกครั้ง</strong> ปล่อยให้ pipeline เตรียมทุกอย่างให้พร้อมโดยอัตโนมัติ แต่คงปุ่มที่มนุษย์กดไว้ก่อน เมื่อคุณ deploy ด้วยปุ่มนั้นหลายสิบครั้งจนไม่เคยมีเซอร์ไพรส์ และมี monitoring/rollback ที่ไว้ใจได้ ค่อยตัดปุ่มออกเพื่อก้าวสู่ Continuous Deployment — การก้าวข้ามนี้ควรมาจากความเชื่อมั่นที่พิสูจน์แล้ว ไม่ใช่ความมักง่าย</p>
+
+  <h3>9.3 สิ่งที่ทำให้ Deployment เต็มรูปแบบเป็นไปได้</h3>
+  <p>การปล่อยขึ้น prod อัตโนมัติจะปลอดภัยก็ต่อเมื่อมีตาข่ายรองรับครบ: ชุดทดสอบครอบคลุมพอจะเชื่อได้, <strong>monitoring</strong> ที่จับได้ทันทีเมื่อ prod เริ่มเพี้ยน, ความสามารถ <strong>rollback อัตโนมัติ</strong>เมื่อสุขภาพระบบตก (บทที่ 11), และกลยุทธ์ปล่อยที่จำกัดวงความเสียหาย (เช่น canary) ขาดตาข่ายเหล่านี้ Continuous Deployment ก็คือการวิ่งโดยไม่มีเบรก</p>
+
+  <div class="note"><span class="t">สรุปบทที่ 9</span>Delivery และ Deployment ใช้ CI/build ชุดเดียวกัน ต่างกันที่ <strong>มี "ประตูอนุมัติของมนุษย์" ก่อนขึ้น prod หรือไม่</strong> · Delivery = พร้อมเสมอ คนเลือกเวลาปล่อย, Deployment = ผ่าน CI แล้วขึ้นเอง · เริ่มที่ Delivery ก่อน แล้วค่อยขยับเมื่อความเชื่อมั่นพิสูจน์แล้ว · Deployment เต็มรูปต้องมี test + monitoring + rollback + กลยุทธ์ปล่อยรองรับ</div>
+  <div class="chapter-end">· · ·</div>
+</section>
+
+<!-- ============================ CH10 ============================ -->
+<section class="chapter" id="ch10">
+  <div class="ch-head">
+    <div class="row"><div class="num">10</div><h2>Environments &amp; การ Deploy</h2></div>
+    <span class="chip" style="background:var(--l3-soft);color:var(--l3)">LEVEL 3 · เข้าสู่ CD</span>
+  </div>
+
+  <p>"production" ไม่ใช่ที่เดียวที่โค้ดไป โค้ดเดินผ่านหลายสภาพแวดล้อม (environment) ก่อนถึงผู้ใช้จริง บทนี้คือวิธีจัดสภาพแวดล้อมเหล่านั้นให้เป็นทางเดินที่มีด่านป้องกัน</p>
+
+  <h3>10.1 บันไดของ environment</h3>
+  <figure class="fig">
+    <svg viewBox="0 0 720 190" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="โค้ดไหลผ่าน dev ไป staging แล้วถึง production โดยมีประตูป้องกันคืออนุมัติของมนุษย์คั่นก่อนเข้า production">
+      <rect x="30" y="70" width="150" height="56" rx="11" fill="#e6efe4" stroke="#5a8a5e" stroke-width="1.4"/><text x="105" y="93" text-anchor="middle" class="lbl">dev / preview</text><text x="105" y="111" text-anchor="middle" class="mono">deploy อัตโนมัติ</text>
+      <rect x="270" y="70" width="150" height="56" rx="11" fill="#f8ecd8" stroke="#c07415" stroke-width="1.4"/><text x="345" y="93" text-anchor="middle" class="lbl">staging</text><text x="345" y="111" text-anchor="middle" class="mono">เหมือน prod ไว้ทดสอบจริง</text>
+      <rect x="540" y="70" width="150" height="56" rx="11" fill="#f6e0db" stroke="#a33327" stroke-width="1.6"/><text x="615" y="93" text-anchor="middle" class="lbl">production</text><text x="615" y="111" text-anchor="middle" class="mono">ผู้ใช้จริง</text>
+      <path d="M182 98 L 268 98" class="flow" marker-end="url(#ar)"/>
+      <path d="M422 98 L 538 98" class="flow-r" marker-end="url(#ar-r)"/>
+      <rect x="448" y="30" width="64" height="30" rx="6" fill="#222b2e"/><text x="480" y="50" text-anchor="middle" class="lbl-w" style="font-size:11px">🔒 gate</text>
+      <path d="M480 60 L 480 84" class="flow-r dash" marker-end="url(#ar-r)"/>
+      <text x="480" y="150" text-anchor="middle" class="mono" style="fill:#a33327">ต้องอนุมัติ + secret ของ prod แยกต่างหาก</text>
+    </svg>
+    <figcaption><b>FIG 10.1</b> — โค้ดไต่บันได dev → staging → production · <code>staging</code> ตั้งให้เหมือน prod มากที่สุดเพื่อจับปัญหาก่อนถึงผู้ใช้ · ประตูป้องกันคั่นก่อน prod</figcaption>
+  </figure>
+  <ul>
+    <li><strong>dev / preview</strong> — deploy อัตโนมัติทุก branch/PR ไว้ลองของ พังได้ ไม่กระทบใคร</li>
+    <li><strong>staging</strong> — ตั้งให้เหมือน production มากที่สุด (ข้อมูล โครงสร้าง การตั้งค่าใกล้เคียง) เพื่อจับปัญหาที่จะเกิดบนจริง ก่อนมันเกิดจริง</li>
+    <li><strong>production</strong> — ของจริง มีด่านป้องกันแน่นหนาที่สุด</li>
+  </ul>
+
+  <h3>10.2 Environment protection — ด่านก่อน production</h3>
+  <p>แพลตฟอร์มให้ผูกกฎป้องกันกับแต่ละ environment สิ่งเหล่านี้คือ "ประตูอนุมัติ" จากบทที่ 9 ในรูปธรรม:</p>
+  <ul>
+    <li><strong>required reviewers</strong> — ต้องมีคนที่กำหนดกดอนุมัติ ก่อน job ที่ deploy เข้า prod จะเริ่มทำงาน</li>
+    <li><strong>wait timer</strong> — หน่วงเวลาก่อน deploy ให้มีช่วงยกเลิกได้ทัน</li>
+    <li><strong>branch restriction</strong> — เฉพาะ <code>main</code> (หรือ tag ที่กำหนด) เท่านั้นที่ deploy เข้า prod ได้</li>
+    <li><strong>scoped secrets</strong> — secret ของ prod ผูกกับ environment นี้ pipeline จาก branch อื่นแตะไม่ได้</li>
+  </ul>
+  <pre><code><span class="k">jobs:</span>
+  <span class="k">deploy-prod:</span>
+    <span class="k">needs:</span> <span class="a">build</span>
+    <span class="k">runs-on:</span> <span class="a">ubuntu-latest</span>
+    <span class="k">environment:</span> <span class="a">production</span>      <span class="c"># ผูกกับ environment "production" — กฎป้องกันมีผลทันที</span>
+    <span class="k">steps:</span>
+      - <span class="k">uses:</span> <span class="a">actions/download-artifact@v4</span>
+        <span class="k">with:</span> {<span class="k">name:</span> <span class="a">dist</span>}
+      - <span class="k">run:</span> <span class="a">./deploy.sh production</span>
+        <span class="k">env:</span>
+          <span class="k">DEPLOY_KEY:</span> <span class="a">${{ secrets.PROD_DEPLOY_KEY }}</span></code></pre>
+  <p>เมื่อ job นี้ผูก <code>environment: production</code> ที่มี required reviewer แล้ว มันจะ <strong>หยุดรอ</strong> ที่หน้า Actions จนกว่าจะมีคนกดอนุมัติ — นี่แหละคือ "ปุ่มที่มนุษย์กด" ในบทที่ 9 ที่ทำงานจริง</p>
+
+  <div class="use"><span class="t">ทำไม staging ต้องเหมือน prod</span>บั๊กที่แพงที่สุดคือบั๊กที่ "โผล่เฉพาะบน prod" — มักเกิดเพราะ staging ต่างจาก prod (เวอร์ชัน, ข้อมูล, ตัวแปร) ยิ่ง staging เหมือน prod เท่าไร โอกาสที่ prod จะเซอร์ไพรส์ยิ่งน้อยลงเท่านั้น ลงทุนทำ staging ให้เหมือนคุ้มเสมอ</div>
+
+  <div class="note"><span class="t">สรุปบทที่ 10</span>โค้ดไต่บันได dev → staging → production · staging ตั้งให้เหมือน prod เพื่อจับบั๊กก่อนถึงผู้ใช้ · ผูก job กับ <code>environment:</code> เพื่อเปิดกฎป้องกัน: required reviewer, wait timer, branch restriction, scoped secret · job ที่ผูก environment ที่ต้องอนุมัติจะหยุดรอคนกด — ปุ่มของบทที่ 9 ในทางปฏิบัติ</div>
+  <div class="chapter-end">· · ·</div>
+</section>
+
+<!-- ============================ CH11 ============================ -->
+<section class="chapter" id="ch11">
+  <div class="ch-head">
+    <div class="row"><div class="num">11</div><h2>กลยุทธ์ Deploy &amp; Rollback</h2></div>
+    <span class="chip" style="background:var(--l3-soft);color:var(--l3)">LEVEL 3 · เข้าสู่ CD</span>
+  </div>
+
+  <p>"deploy" ไม่ได้มีแบบเดียว วิธีที่คุณเปลี่ยนจากเวอร์ชันเก่าเป็นใหม่บน production กำหนดว่า ถ้าเวอร์ชันใหม่มีปัญหา จะมีผู้ใช้กี่คนที่เจอ และคุณถอยกลับได้เร็วแค่ไหน นี่คือหัวใจของ CD ที่ปลอดภัย</p>
+
+  <h3>11.1 สี่กลยุทธ์หลัก</h3>
+  <table>
+    <thead><tr><th>กลยุทธ์</th><th>ทำอย่างไร</th><th>แลกอะไร</th></tr></thead>
+    <tbody>
+      <tr><td><b>Recreate</b></td><td>ดับเวอร์ชันเก่าทั้งหมด แล้วเปิดใหม่</td><td>ง่ายสุด แต่มีช่วง <b>downtime</b></td></tr>
+      <tr><td><b>Rolling</b></td><td>ทยอยเปลี่ยนเครื่องทีละกลุ่ม</td><td>ไม่ดับ แต่ช่วงเปลี่ยนมีสองเวอร์ชันปนกัน</td></tr>
+      <tr><td><b>Blue-Green</b></td><td>ยกชุดใหม่ขึ้นคู่ขนาน แล้วสลับ traffic ทีเดียว</td><td>rollback ไวมาก แต่ใช้ทรัพยากร 2 เท่าชั่วคราว</td></tr>
+      <tr><td><b>Canary</b></td><td>ปล่อยให้ผู้ใช้ส่วนน้อยก่อน เฝ้าดู แล้วค่อยขยาย</td><td>จำกัดวงความเสียหายดีสุด แต่ซับซ้อนสุด</td></tr>
+    </tbody>
+  </table>
+
+  <figure class="fig">
+    <svg viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Blue-Green สลับ traffic ทั้งหมดจากชุดน้ำเงินไปชุดเขียวทีเดียว ส่วน Canary ค่อย ๆ เพิ่มสัดส่วน traffic ไปเวอร์ชันใหม่จากห้าเปอร์เซ็นต์ไปจนเต็ม">
+      <text x="180" y="22" text-anchor="middle" class="lbl">Blue-Green — สลับทีเดียว</text>
+      <circle cx="100" cy="90" r="26" fill="#e2eeea" stroke="#0e6e63" stroke-width="1.5"/><text x="100" y="94" text-anchor="middle" class="mono-t">BLUE</text><text x="100" y="130" text-anchor="middle" class="sub">v.เก่า (รับงานอยู่)</text>
+      <circle cx="260" cy="90" r="26" fill="#e6efe4" stroke="#5a8a5e" stroke-width="1.5"/><text x="260" y="94" text-anchor="middle" class="mono">GREEN</text><text x="260" y="130" text-anchor="middle" class="sub">v.ใหม่ (อุ่นเครื่องรอ)</text>
+      <rect x="150" y="55" width="60" height="22" rx="5" fill="#222b2e"/><text x="180" y="70" text-anchor="middle" class="lbl-w" style="font-size:10px">router</text>
+      <path d="M150 66 L 124 80" class="flow-r"/><path d="M210 66 L 236 80" class="flow dash"/>
+      <text x="180" y="160" text-anchor="middle" class="mono">เสียบ router ไป GREEN ทีเดียว · พังก็เสียบกลับ BLUE ทันที</text>
+      <line x1="370" y1="20" x2="370" y2="200" stroke="#ddd5c6"/>
+      <text x="545" y="22" text-anchor="middle" class="lbl">Canary — ค่อย ๆ เพิ่ม</text>
+      <rect x="430" y="70" width="50" height="40" rx="6" fill="#f6e0db" stroke="#a33327"/><text x="455" y="94" text-anchor="middle" class="mono">5%</text>
+      <rect x="500" y="70" width="50" height="40" rx="6" fill="#f8ecd8" stroke="#c07415"/><text x="525" y="94" text-anchor="middle" class="mono">25%</text>
+      <rect x="570" y="70" width="50" height="40" rx="6" fill="#e6efe4" stroke="#5a8a5e"/><text x="595" y="94" text-anchor="middle" class="mono">50%</text>
+      <rect x="640" y="70" width="50" height="40" rx="6" fill="#e2eeea" stroke="#0e6e63"/><text x="665" y="94" text-anchor="middle" class="mono">100%</text>
+      <path d="M482 90 L 498 90" class="flow" marker-end="url(#ar)"/><path d="M552 90 L 568 90" class="flow" marker-end="url(#ar)"/><path d="M622 90 L 638 90" class="flow" marker-end="url(#ar)"/>
+      <text x="560" y="135" text-anchor="middle" class="mono">เฝ้า metric ทุกขั้น · ผิดปกติเมื่อไรหยุด+ถอยทันที</text>
+      <text x="560" y="155" text-anchor="middle" class="sub">ผู้ใช้ที่เจอบั๊กถูกจำกัดไว้แค่สัดส่วนเล็ก ๆ</text>
+    </svg>
+    <figcaption><b>FIG 11.1</b> — <strong>Blue-Green</strong> เก็บชุดเก่าไว้ครบ สลับ/ถอยได้ทันที · <strong>Canary</strong> ปล่อยทีละน้อยพร้อมเฝ้า metric จำกัดจำนวนผู้ใช้ที่กระทบถ้าเวอร์ชันใหม่มีปัญหา</figcaption>
+  </figure>
+
+  <h3>11.2 Rollback — แผนถอยที่ต้องมีก่อนเดินหน้า</h3>
+  <p>กฎเหล็กของ CD: <strong>อย่า deploy อะไรที่คุณถอยกลับไม่ได้</strong> ความสามารถ rollback ที่เร็วและเชื่อถือได้ คือสิ่งที่ทำให้กล้าปล่อยบ่อย เพราะ "ปล่อยแล้วพัง" ไม่ใช่หายนะ แค่กด/รันถอยกลับเวอร์ชันก่อนหน้า Blue-Green ทำ rollback ได้แทบจะทันที (เสียบ router กลับ) ส่วนระบบที่ดีจะ <strong>rollback อัตโนมัติ</strong> เมื่อ health check หรือ metric หลังปล่อยตก โดยไม่ต้องรอคนสังเกต</p>
+
+  <div class="warn"><span class="t">โครงสร้างข้อมูลถอยยากกว่าโค้ด</span>การถอยโค้ดง่าย แต่ถ้า deploy นั้นมี <strong>การเปลี่ยนสคีมาฐานข้อมูล</strong> (migration) ที่ทำลายของเก่า การถอยจะยุ่งมาก หลักปฏิบัติคือทำ migration แบบ <strong>เข้ากันได้ทั้งสองทาง</strong> (backward-compatible): เพิ่มคอลัมน์ใหม่ก่อนโดยไม่ลบเก่า ให้โค้ดเก่าและใหม่อยู่ร่วมกันได้ แล้วค่อยเก็บกวาดของเก่าในรอบถัดไป — เพื่อให้ rollback ยังเป็นทางเลือกเสมอ</div>
+
+  <div class="note"><span class="t">สรุปบทที่ 11</span>สี่กลยุทธ์: <strong>recreate</strong> (ง่าย มี downtime), <strong>rolling</strong> (ทยอย ไม่ดับ), <strong>blue-green</strong> (ยกคู่ขนาน สลับ/ถอยไว), <strong>canary</strong> (ปล่อยทีละน้อย จำกัดวงดีสุด) · กฎเหล็ก: อย่า deploy สิ่งที่ถอยกลับไม่ได้ — rollback ที่ไว (อัตโนมัติยิ่งดี) คือเหตุผลที่กล้าปล่อยบ่อย · ทำ DB migration แบบเข้ากันได้สองทางเพื่อให้ถอยได้เสมอ</div>
+  <div class="chapter-end">· · ·</div>
+</section>
+
+<!-- ============================ CH12 ============================ -->
+<section class="chapter" id="ch12">
+  <div class="ch-head">
+    <div class="row"><div class="num">12</div><h2>ความปลอดภัยของ Pipeline</h2></div>
+    <span class="chip" style="background:var(--l4-soft);color:var(--l4)">LEVEL 4 · ระดับเทพ</span>
+  </div>
+
+  <p>pipeline ของคุณมีกุญแจสู่ production มันจึงเป็น <strong>เป้าหมายการโจมตีชั้นดี</strong> — เจาะ pipeline ได้ เท่ากับเจาะทุกอย่างที่มันเข้าถึง บทนี้คือหลักการทำให้ pipeline แข็งแกร่ง ซึ่งเป็นทักษะที่แยกมือสมัครเล่นออกจากมืออาชีพ</p>
+
+  <h3>12.1 Supply chain — โค้ดที่คุณไม่ได้เขียนแต่ให้สิทธิ์เต็ม</h3>
+  <p>ทุก <code>uses: someone/action@v4</code> คือการรันโค้ดของคนอื่นในสภาพแวดล้อมที่เข้าถึง secret ของคุณ ถ้าเจ้าของ action นั้นถูกแฮ็กหรือกลายเป็นคนร้าย เขารันอะไรใน pipeline คุณก็ได้ ป้องกันด้วย:</p>
+  <ul>
+    <li><strong>ปักหมุดเป็น commit SHA</strong> ไม่ใช่ tag — <code>uses: actions/checkout@a1b2c3d...</code> เพราะ tag อย่าง <code>@v4</code> ถูกย้ายไปชี้โค้ดร้ายได้ แต่ SHA ผูกกับเนื้อหาตายตัว (หลักการ SHA จากบทที่ 2 ของเล่ม Git ตรง ๆ)</li>
+    <li><strong>ใช้เฉพาะ action ที่เชื่อถือได้</strong> และตรวจก่อนอัปเกรด</li>
+    <li><strong>ล็อกเวอร์ชัน dependencies</strong> ด้วย lock file เสมอ</li>
+  </ul>
+
+  <h3>12.2 สิทธิ์น้อยที่สุด (least privilege)</h3>
+  <p>โดยปริยาย token ของ pipeline มักได้สิทธิ์กว้างเกินจำเป็น จงหดให้เหลือเท่าที่ใช้จริง งานที่แค่รันเทสต์ไม่ควรมีสิทธิ์เขียน repo:</p>
+  <pre><code><span class="k">permissions:</span>
+  <span class="k">contents:</span> <span class="a">read</span>        <span class="c"># อ่านโค้ดได้พอ ไม่ให้สิทธิ์เขียนโดยไม่จำเป็น</span></code></pre>
+  <p>หลักคิด: ถ้า pipeline ถูกเจาะ ความเสียหายถูกจำกัดด้วยสิทธิ์ที่มันมี — ให้น้อย เสียหายน้อย</p>
+
+  <h3>12.3 OIDC — เลิกเก็บกุญแจถาวร</h3>
+  <p>วิธีเก่าคือเก็บ credential ระยะยาวของ cloud ไว้เป็น secret ซึ่งถ้ารั่วก็ใช้ได้ตลอดจนกว่าจะเพิกถอน วิธีใหม่คือ <strong>OIDC (OpenID Connect)</strong>: pipeline แลก "ตัวตนที่ cloud เชื่อถือ" เป็น <strong>credential ชั่วคราวที่หมดอายุในไม่กี่นาที</strong> สำหรับการรันครั้งนั้นโดยเฉพาะ ไม่มีกุญแจถาวรให้รั่วอีกต่อไป — นี่คือมาตรฐานที่ทีมจริงจังขยับไปใช้</p>
+
+  <div class="warn"><span class="t">workflow ที่ทริกเกอร์จาก fork = พื้นที่อันตราย</span>ต่อยอดจากบทที่ 8: ใน public repo อย่าให้ workflow ที่รันโค้ดจาก PR ของคนนอกเข้าถึง secret หรือสิทธิ์เขียน แยก "งานที่ต้องเชื่อโค้ด PR" (build/test ในกล่องไร้ secret) ออกจาก "งานที่มีสิทธิ์" (deploy/comment) ให้เด็ดขาด การปนสองอย่างนี้คือที่มาของช่องโหว่ CI ที่ถูกใช้โจมตีจริงนับไม่ถ้วน</div>
+
+  <div class="note"><span class="t">สรุปบทที่ 12</span>pipeline คือเป้าโจมตีเพราะถือกุญแจสู่ prod · ปักหมุด action ด้วย <strong>commit SHA</strong> ไม่ใช่ tag (ผูกเนื้อหาตายตัวเหมือน SHA ใน Git) · ให้ <strong>สิทธิ์น้อยที่สุด</strong> เพื่อจำกัดความเสียหายเมื่อถูกเจาะ · ใช้ <strong>OIDC</strong> แทน credential ถาวรเพื่อเลิกเก็บกุญแจที่รั่วได้ · กันโค้ดจาก fork ไม่ให้แตะ secret/สิทธิ์</div>
+  <div class="chapter-end">· · ·</div>
+</section>
+
+<!-- ============================ CH13 ============================ -->
+<section class="chapter" id="ch13">
+  <div class="ch-head">
+    <div class="row"><div class="num">13</div><h2>Runners &amp; ความเร็วของ Pipeline</h2></div>
+    <span class="chip" style="background:var(--l4-soft);color:var(--l4)">LEVEL 4 · ระดับเทพ</span>
+  </div>
+
+  <p>เมื่อทีมโตและ pipeline รันวันละหลายร้อยครั้ง สองเรื่องกลายเป็นปัญหาจริง: เครื่องที่รัน (runner) และเวลาที่ใช้ บทนี้คือมุมมองวิศวกรรมของการ scale CI/CD</p>
+
+  <h3>13.1 Hosted vs Self-hosted — เลือกอย่างมีเหตุผล</h3>
+  <table>
+    <thead><tr><th></th><th>Hosted runner</th><th>Self-hosted runner</th></tr></thead>
+    <tbody>
+      <tr><td><b>ใครดูแล</b></td><td>แพลตฟอร์ม — เกิดใหม่สะอาดทุกครั้ง</td><td>คุณเอง — ติดตั้ง/อัปเดต/รักษาความปลอดภัย</td></tr>
+      <tr><td><b>เหมาะเมื่อ</b></td><td>งานทั่วไป เริ่มเร็ว ไม่อยากดูแล</td><td>ต้องการ GPU/ฮาร์ดแวร์พิเศษ, เข้าถึงเน็ตภายใน, คุมต้นทุนสเกลใหญ่</td></tr>
+      <tr><td><b>ความเสี่ยง</b></td><td>ต่ำ</td><td><b style="color:var(--red)">สูงถ้าใช้กับ public repo</b> — โค้ดจาก PR อาจฝังตัวในเครื่องที่ใช้ซ้ำ</td></tr>
+    </tbody>
+  </table>
+
+  <div class="warn"><span class="t">self-hosted runner + public repo = อันตรายเฉพาะ</span>เพราะ self-hosted runner มักถูกใช้ซ้ำ (ไม่เกิดใหม่สะอาด) โค้ดร้ายจาก PR ภายนอกอาจทิ้ง backdoor ไว้ให้การรันครั้งถัดไป หรือกระโดดเข้าเครือข่ายภายในของคุณ ถ้าจำเป็นต้องใช้ ให้ทำเป็น <strong>ephemeral runner</strong> (เกิดใหม่-ทำลายทิ้งทุกงาน) และแยกออกจากเครือข่ายสำคัญ</div>
+
+  <h3>13.2 ทำให้ pipeline เร็วขึ้น</h3>
+  <p>pipeline ช้าคือ pipeline ที่บั่นทอนทุกคน เครื่องมือเร่งความเร็วเรียงตามผลที่ได้:</p>
+  <ul>
+    <li><strong>ขนานงาน</strong> — แตก job อิสระให้รันพร้อมกัน (บทที่ 7) ลดเส้นทางวิกฤต</li>
+    <li><strong>cache</strong> — เลิกติดตั้ง dependencies ซ้ำ (บทที่ 6)</li>
+    <li><strong>ล้มเร็ว</strong> — เรียงด่านถูก/เร็ว (lint) ไว้หน้า ด่านแพง (E2E) ไว้หลัง (บทที่ 5)</li>
+    <li><strong>รันเฉพาะที่เปลี่ยน</strong> — ใน monorepo ใหญ่ ตรวจเฉพาะส่วนที่ถูกแก้ด้วย path filter แทนการรันทั้งหมด</li>
+    <li><strong>shallow clone</strong> — <code>git clone --depth 1</code> ดึงแค่ commit ล่าสุด (ตรงกับบทที่ 14 ของเล่ม Git) ลดเวลา checkout repo ใหญ่</li>
+  </ul>
+
+  <h3>13.3 ทำ pipeline เป็นโค้ดที่ดูแลได้</h3>
+  <p>เมื่อ workflow เยอะขึ้น มันก็คือโค้ดเบสอีกชุดที่ต้องดูแล หลีกเลี่ยงการก๊อป YAML ซ้ำไปมาด้วย <strong>reusable workflow</strong> และ <strong>composite action</strong> — แยกขั้นตอนที่ใช้ซ้ำออกเป็นชิ้นกลางแล้วเรียกใช้ เหมือนแยกฟังก์ชันในโค้ดทั่วไป pipeline ที่ดีถูกรีวิว เวอร์ชัน และรีแฟกเตอร์เหมือนโค้ด production</p>
+
+  <div class="note"><span class="t">สรุปบทที่ 13</span>hosted runner สะดวกและสะอาดทุกครั้ง, self-hosted ใช้เมื่อต้องการฮาร์ดแวร์/เครือข่ายพิเศษ แต่ <strong>อันตรายกับ public repo</strong> — ใช้เป็น ephemeral และแยกเครือข่าย · เร่งความเร็ว: ขนานงาน + cache + ล้มเร็ว + รันเฉพาะที่เปลี่ยน + shallow clone · จัดการ workflow เป็นโค้ดด้วย reusable workflow/composite action</div>
+  <div class="chapter-end">· · ·</div>
+</section>
+
+<!-- ============================ CH14 ============================ -->
+<section class="chapter" id="ch14">
+  <div class="ch-head">
+    <div class="row"><div class="num">14</div><h2>เทียบแพลตฟอร์ม &amp; บทสรุป</h2></div>
+    <span class="chip" style="background:var(--l4-soft);color:var(--l4)">LEVEL 4 · ระดับเทพ</span>
+  </div>
+
+  <p>ตลอดเล่มเราใช้ GitHub Actions เป็นตัวอย่าง แต่ย้ำมาตลอดว่าแนวคิดข้ามแพลตฟอร์มได้ บทสุดท้ายนี้พิสูจน์คำกล่าวนั้น แล้วม้วนทุกอย่างกลับมาเป็นแก่นที่ถือกลับไปใช้ได้จริง</p>
+
+  <h3>14.1 คำเดียวกัน คนละชื่อ</h3>
+  <p>ทุกแพลตฟอร์มมีลำดับชั้นเดียวกับบทที่ 2 เปลี่ยนแค่คำศัพท์และรูปแบบไฟล์:</p>
+  <table>
+    <thead><tr><th>แนวคิด</th><th>GitHub Actions</th><th>GitLab CI</th><th>Jenkins</th></tr></thead>
+    <tbody>
+      <tr><td><b>ไฟล์นิยาม</b></td><td><code>.github/workflows/*.yml</code></td><td><code>.gitlab-ci.yml</code></td><td><code>Jenkinsfile</code></td></tr>
+      <tr><td><b>หน่วยรวม</b></td><td>workflow</td><td>pipeline</td><td>pipeline</td></tr>
+      <tr><td><b>กลุ่มงาน</b></td><td>job</td><td>job (จัดกลุ่มด้วย stage)</td><td>stage</td></tr>
+      <tr><td><b>เครื่องรัน</b></td><td>runner</td><td>runner</td><td>agent / node</td></tr>
+      <tr><td><b>ของสำเร็จรูป</b></td><td>action</td><td>template / include</td><td>plugin / shared library</td></tr>
+    </tbody>
+  </table>
+  <p>นี่คือเหตุผลที่เล่มนี้เน้น "แนวคิด" — เรียนกลไกหนึ่งครั้ง ย้ายแพลตฟอร์มเมื่อไรก็แค่เรียนคำศัพท์ใหม่ ไม่ต้องเรียนวิธีคิดใหม่ CircleCI, Azure Pipelines, Travis และอื่น ๆ ก็เข้าแม่พิมพ์เดียวกันนี้</p>
+
+  <h3>14.2 หลักปฏิบัติที่ดี — รวมทั้งเล่ม</h3>
+  <ul>
+    <li><strong>เก็บ pipeline ไว้กับโค้ด</strong> (pipeline-as-code) เวอร์ชันคู่กัน รีวิวคู่กัน</li>
+    <li><strong>เร็วและล้มเร็ว</strong> — ด่านถูกอยู่หน้า ขนานงานให้มาก cache ให้พอ</li>
+    <li><strong>บังคับด้วยระบบ ไม่ใช่วินัย</strong> — branch protection ทำให้ "CI ไม่เขียว = merge ไม่ได้"</li>
+    <li><strong>เริ่มที่ Delivery</strong> คงปุ่มมนุษย์ไว้ก่อน แล้วค่อยขยับสู่ Deployment เมื่อความเชื่อมั่นพิสูจน์แล้ว</li>
+    <li><strong>ถอยได้เสมอ</strong> — ไม่ deploy สิ่งที่ rollback ไม่ได้ migration เข้ากันได้สองทาง</li>
+    <li><strong>ความปลอดภัยไม่ใช่ของเสริม</strong> — pin SHA, least privilege, OIDC, กันโค้ด fork แตะ secret</li>
+  </ul>
+
+  <h3>14.3 บทสรุปทั้งเล่ม — แก่นที่ถือกลับไป</h3>
+  <p>ถ้าจำได้แค่ไม่กี่อย่างจากเล่มนี้ ขอให้เป็นสิ่งเหล่านี้ เพราะทุกเทคนิคงอกออกมาจากมัน:</p>
+  <ul>
+    <li>CI/CD มีค่าเพราะมัน <strong>ย่นวงจรป้อนกลับ</strong> — จับปัญหายิ่งเร็ว ยิ่งถูก</li>
+    <li>ทุก pipeline คือ <strong>event → workflow → job (ขนาน) → step (เรียง) บน runner</strong> — โครงเดียวข้ามทุกเครื่องมือ</li>
+    <li>CI/CD คือ <strong>สามชั้นซ้อนกัน</strong> Integration ⊂ Delivery ⊂ Deployment เส้นแบ่งคือ "มีคนกดปุ่มไหม"</li>
+    <li>ความปลอดภัยและ <strong>ความสามารถถอยกลับ</strong> คือสิ่งที่ทำให้ "ปล่อยบ่อย" เป็นเรื่องกล้าทำ ไม่ใช่เรื่องเสี่ยง</li>
+    <li>pipeline คือ <strong>โค้ด</strong> — เวอร์ชัน รีวิว และดูแลมันด้วยมาตรฐานเดียวกับโค้ด production</li>
+  </ul>
+
+  <div class="use"><span class="t">เส้นทางต่อจากนี้</span>วิธีเก่งขึ้นจริงคือลงมือ: เอา repo ทดลองใส่ <code>ci.yml</code> ง่าย ๆ จากบทที่ 3 แล้วค่อย ๆ เติมทีละชั้น — เพิ่ม matrix, cache, แล้ว deploy ขึ้น environment ฟรีสักที่ จากนั้นลองพังมันดู (ทำเทสต์ให้ตก, ทำ deploy ให้ล้ม) เพื่อเห็นว่า fail loud กับ rollback ทำงานยังไง — pipeline ที่คุณเคยทำพังและกู้คืนเอง สอนได้ลึกกว่าทุกคู่มือ</div>
+
+  <div class="note"><span class="t">สรุปบทที่ 14</span>ทุกแพลตฟอร์มใช้ลำดับชั้นเดียวกัน ต่างแค่คำศัพท์/ไฟล์ — เรียนแนวคิดครั้งเดียวย้ายได้หมด · หลักปฏิบัติ: pipeline-as-code, เร็ว+ล้มเร็ว, บังคับด้วยระบบ, เริ่มที่ Delivery, ถอยได้เสมอ, ความปลอดภัยมาก่อน · แก่น: ย่นวงจรป้อนกลับ · โครง event→job→step · สามชั้น CI/CD · ถอยได้+ปลอดภัย · pipeline คือโค้ด — เท่านี้คุณก็จาก 0 ถึง Hero ของ CI/CD แล้ว</div>
+  <div class="chapter-end">— จบหลักสูตร —</div>
+</section>
+
+<footer>
+  <p><b>CI/CD 0 → Hero</b> — จาก commit สู่ production อัตโนมัติ · เล่มต่อจาก <a href="index.html">Git 0 → Hero</a> · เขียนเป็นภาษาไทย พร้อมไดอะแกรมทุกหัวข้อ</p>
+  <p style="margin-top:.6rem">วิธีใช้ให้คุ้ม: อ่านไล่ระดับ Level 0–1 ก่อนเพื่อจับแบบจำลองความคิด แล้วลงมือสร้าง pipeline จริงควบคู่ไปทีละบท · ตัวอย่างยึด GitHub Actions แต่ทุกแนวคิดย้ายไป GitLab CI / Jenkins / CircleCI ได้ (บทที่ 14)</p>
+</footer>
+</main>
+</div>
+
+<script>
+const bar=document.getElementById('progress');
+addEventListener('scroll',()=>{const h=document.documentElement;bar.style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight)*100)+'%'},{passive:true});
+const links=[...document.querySelectorAll('.toc li a')];
+const secs=links.map(a=>document.querySelector(a.getAttribute('href')));
+const spy=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){links.forEach(l=>l.classList.toggle('active',l.getAttribute('href')==='#'+e.target.id))}})},{rootMargin:'-15% 0px -75% 0px'});
+secs.forEach(s=>s&&spy.observe(s));
+const tt=document.getElementById('tocToggle'),toc=document.getElementById('toc');
+tt.addEventListener('click',()=>toc.classList.toggle('open'));
+toc.addEventListener('click',e=>{if(e.target.closest('a'))toc.classList.remove('open')});
+</script>
+</body>
+</html>

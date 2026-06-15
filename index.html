@@ -161,6 +161,8 @@ footer b{color:var(--ink)}
       <li><a href="#ch12"><span class="n">12</span>เครื่องมือทรงพลัง</a></li>
       <li><a href="#ch13"><span class="n">13</span>กู้ของหาย &amp; ซ่อมประวัติ</a></li>
       <li><a href="#ch14"><span class="n">14</span>Repo ใหญ่ &amp; บทสรุป</a></li>
+      <li class="grp" style="--gc:var(--teal)">เล่มต่อไป</li>
+      <li><a href="#next"><span class="n">→</span>git push แล้วยังไงต่อ (CI/CD)</a></li>
     </ul>
   </div>
 </aside>
@@ -283,6 +285,7 @@ footer b{color:var(--ink)}
 <span class="p">$</span> <span class="k">git diff</span>                <span class="c"># 2. ดูว่าเปลี่ยน "อะไร" ทีละบรรทัด</span>
 <span class="p">$</span> <span class="k">git add</span> <span class="a">login.js</span>       <span class="c"># 3. เลือกไฟล์เข้าพื้นที่จัดเตรียม</span>
 <span class="p">$</span> <span class="k">git commit</span> -m <span class="a">"เพิ่มหน้า login"</span>   <span class="c"># 4. ผนึกเป็นภาพถ่ายถาวร</span></code></pre>
+  <div class="note"><span class="t">เห็น diff ให้ครบทั้งสองชั้น</span><code>git diff</code> โชว์เฉพาะการแก้ที่ <strong>ยังไม่ add</strong> (working เทียบ staging) · พอ <code>add</code> แล้วอยากเห็นว่าอะไรกำลังจะถูก commit จริง ๆ ใช้ <code>git diff --staged</code> (หรือ <code>--cached</code>) ที่เทียบ staging กับ commit ล่าสุด — ตรวจทานก่อนผนึกได้</div>
   <p>ข้อความ commit (<code>-m</code>) ไม่ใช่พิธีกรรม — มันคือบันทึกที่ "ตัวคุณในอีกหกเดือน" จะอ่านเพื่อเข้าใจว่าทำไมโค้ดถึงเป็นแบบนี้ เขียนให้บอก <strong>เหตุผล</strong> ไม่ใช่แค่สิ่งที่ทำ</p>
 
   <h3>3.3 log — อ่านประวัติ</h3>
@@ -339,6 +342,8 @@ footer b{color:var(--ink)}
   <pre><code><span class="p">$</span> <span class="k">git switch</span> -c <span class="a">feature</span>     <span class="c"># สร้าง branch ใหม่ + ย้ายไปยืนที่นั่น</span>
 <span class="p">$</span> <span class="k">git switch</span> <span class="a">main</span>          <span class="c"># ย้ายกลับมา main (HEAD ขยับ)</span></code></pre>
   <p>เมื่อ <code>HEAD</code> ขยับไป branch ไหน Git จะปรับไฟล์ในโฟลเดอร์ให้ตรงกับภาพถ่ายของ branch นั้นทันที — คุณจึงทดลองบน <code>feature</code> ได้อย่างอิสระโดย <code>main</code> ไม่กระทบเลย</p>
+
+  <div class="warn"><span class="t">Detached HEAD — เมื่อ HEAD ไม่ได้ชี้ branch</span>ปกติ <code>HEAD</code> ชี้ที่ <strong>branch</strong> (แล้ว branch ค่อยชี้ commit) แต่ถ้า checkout ไปที่ commit หรือ tag ตรง ๆ (เช่น <code>git switch --detach &lt;commit&gt;</code> หรือ <code>git checkout v1.0.0</code>) <code>HEAD</code> จะชี้ commit นั้นโดยตรง — เรียกว่า <strong>detached HEAD</strong> · commit ที่ทำในสถานะนี้ไม่มี branch ผูกไว้ พอ <code>switch</code> ไปที่อื่นมันจะ "ลอย" หลุดมือ (ยังกู้ได้จาก reflog บทที่ 6) · อยากเก็บงานไว้ให้ <code>git switch -c &lt;branch-ใหม่&gt;</code> ก่อนออก · กลับสู่ปกติใช้ <code>git switch &lt;branch&gt;</code></div>
 
   <h3>4.2 Merge — รวมเส้นทางกลับเข้าด้วยกัน</h3>
   <p>เมื่องานบน <code>feature</code> เสร็จ ก็รวมกลับเข้า <code>main</code> ด้วย <code>merge</code> ซึ่งมีสองหน้าตาขึ้นกับสถานการณ์:</p>
@@ -487,6 +492,8 @@ footer b{color:var(--ink)}
   </table>
   <div class="warn"><span class="t">--hard คือคำสั่งเดียวที่ลบงานจริง</span><code>reset --hard</code> ทิ้งการแก้ที่ยังไม่ commit อย่างถาวร ใช้เมื่อแน่ใจเท่านั้น แต่ commit ที่ถูก "ทิ้ง" ไปยังกู้ได้จาก reflog (หัวข้อ 6.4) — ของที่หายจริงคือการแก้ที่ไม่เคย commit เลยเท่านั้น</div>
 
+  <div class="use"><span class="t">แก้แค่ commit ล่าสุด — ไม่ต้อง reset</span>ลืมใส่ไฟล์ หรือพิมพ์ข้อความ commit ที่เพิ่งทำผิด? ไม่ต้องถอย commit ทั้งอัน — <code>git add &lt;ไฟล์ที่ลืม&gt;</code> แล้ว <code>git commit --amend</code> จะผนวกเข้ากับ commit ล่าสุดและเปิดให้แก้ข้อความได้เลย (แก้ข้อความอย่างเดียวใช้ <code>git commit --amend -m "ข้อความใหม่"</code>) <strong>⚠️ amend สร้าง commit ใหม่ (SHA เปลี่ยน)</strong> จึงใช้กฎเดียวกับ rebase: อย่า amend commit ที่ push แชร์ไปแล้ว</div>
+
   <h3>6.3 revert — ย้อนแบบปลอดภัยสำหรับงานที่แชร์แล้ว</h3>
   <p><code>reset</code> เขียนประวัติใหม่ จึงห้ามใช้กับ commit ที่ push ขึ้นไปแล้ว (คนอื่นมีของชุดนั้นอยู่) ทางที่ถูกคือ <code>git revert &lt;commit&gt;</code> ซึ่ง <strong>สร้าง commit ใหม่ที่ทำตรงข้ามกับ commit เดิม</strong> — ผลลัพธ์เหมือนยกเลิก แต่ประวัติเดินหน้าต่อ ไม่มีใครเดือดร้อน</p>
 
@@ -497,7 +504,7 @@ footer b{color:var(--ink)}
 <span class="o">9f2c1a8 HEAD@{1}: commit: เพิ่มหน้า login   ← commit ที่นึกว่าหาย</span>
 <span class="p">$</span> <span class="k">git reset</span> --hard <span class="a">9f2c1a8</span>      <span class="c"># ดึงกลับมา — งานกลับมาครบ</span></code></pre>
 
-  <div class="note"><span class="t">สรุปบทที่ 6</span><code>restore</code> ทิ้งการแก้ที่ยังไม่ commit · <code>reset</code> เลื่อนป้าย branch (soft เก็บงาน, hard ลบงาน) ใช้กับงานที่ยังไม่แชร์ · <code>revert</code> สร้าง commit ตรงข้าม ใช้กับงานที่ push แล้ว · <code>reflog</code> จำทุกที่ที่ HEAD เคยอยู่ — กู้ commit ที่นึกว่าหายได้เสมอ</div>
+  <div class="note"><span class="t">สรุปบทที่ 6</span><code>restore</code> ทิ้งการแก้ที่ยังไม่ commit · <code>reset</code> เลื่อนป้าย branch (soft เก็บงาน, hard ลบงาน) ใช้กับงานที่ยังไม่แชร์ · <code>commit --amend</code> แก้ commit ล่าสุด (ก่อน push) · <code>revert</code> สร้าง commit ตรงข้าม ใช้กับงานที่ push แล้ว · <code>reflog</code> จำทุกที่ที่ HEAD เคยอยู่ — กู้ commit ที่นึกว่าหายได้เสมอ</div>
   <div class="chapter-end">· · ·</div>
 </section>
 
@@ -824,6 +831,21 @@ footer b{color:var(--ink)}
 </section>
 
 <!-- ===APPEND=== -->
+
+<!-- ============================ BRIDGE → CI/CD ============================ -->
+<section class="chapter" id="next" style="padding-top:3rem">
+  <div class="ch-head" style="border-color:var(--teal)">
+    <div class="row"><div class="num" style="color:var(--teal)">→</div><h2>git push แล้วเกิดอะไรต่อ?</h2></div>
+    <span class="chip" style="background:var(--teal-soft);color:var(--teal-deep)">เล่มต่อไป · CI/CD</span>
+  </div>
+
+  <p>ตลอดเล่มนี้ทุกอย่างจบลงที่ <code>git push</code> — งานของคุณขึ้นไปอยู่บนเซิร์ฟเวอร์แล้ว แต่มีคำถามที่ค้างอยู่: <strong>ใครเป็นคนตรวจว่าโค้ดที่เพิ่งรวมเข้ามายัง build ได้ เทสต์ผ่าน และไม่ทำของเดิมพัง?</strong> ถ้าให้คนนั่งตรวจเองทุกครั้ง ทุกอย่างจะช้าและพลาดง่าย คำตอบคือ <strong>CI/CD</strong> — การให้เครื่องตรวจและส่งมอบโค้ดอัตโนมัติทุกครั้งที่คุณ push หรือเปิด Pull Request</p>
+
+  <p>มันคือก้าวต่อจากตรงนี้พอดี: เหตุการณ์ใน Git ที่คุณเรียนมาทั้งเล่ม (push, PR, tag) คือ "ทริกเกอร์" ที่ปลุกสายการตรวจสอบและ deploy ให้ทำงานเอง</p>
+
+  <div class="use"><span class="t">อ่านต่อ → เล่ม CI/CD 0 → Hero</span>เล่มพี่น้องที่พาคุณจากคนไม่เคยตั้ง pipeline ไปจนออกแบบสายส่งมอบซอฟต์แวร์อัตโนมัติที่ปลอดภัยและเชื่อถือได้ — แบบจำลองความคิดของ pipeline, เขียน workflow แรก, build/test/lint, matrix &amp; cache, secrets, ไปจนถึง deploy ขึ้น production จริงพร้อมกลยุทธ์ blue-green/canary และ rollback · <a href="cicd.html" style="color:var(--teal-deep);font-weight:600">เปิดเล่ม CI/CD →</a></div>
+  <div class="chapter-end">· · ·</div>
+</section>
 
 <footer>
   <p><b>Git 0 → Hero</b> — คู่มือฉบับเข้าใจถึงแก่น · เขียนเป็นภาษาไทย พร้อมไดอะแกรมทุกหัวข้อ</p>
