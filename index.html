@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Git 0 → Hero — คู่มือฉบับเข้าใจถึงแก่น</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700&family=Bai+Jamjuree:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#faf7f1; --paper-2:#f2ede3; --ink:#222b2e; --ink-soft:#54625f;
+  --line:#ddd5c6; --teal:#0e6e63; --teal-deep:#0a5048; --teal-soft:#e2eeea;
+  --amber:#c07415; --amber-soft:#f8ecd8; --red:#b3402e; --red-soft:#f6e3de;
+  --code-bg:#26302f; --code-ink:#e8e3d6;
+  /* level accent colors — ไล่เฉดจากเย็นไปร้อนตามความยาก */
+  --l0:#5a8a5e; --l0-soft:#e6efe4;
+  --l1:#0e6e63; --l1-soft:#e2eeea;
+  --l2:#c07415; --l2-soft:#f8ecd8;
+  --l3:#c2562a; --l3-soft:#f8e6dc;
+  --l4:#a33327; --l4-soft:#f6e0db;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;scroll-padding-top:2rem}
+body{background:var(--paper);color:var(--ink);font-family:'Anuphan',sans-serif;font-size:17px;line-height:1.85;-webkit-font-smoothing:antialiased}
+::selection{background:var(--teal);color:#fff}
+
+#progress{position:fixed;top:0;left:0;height:3px;background:var(--teal);width:0;z-index:99}
+
+.layout{display:grid;grid-template-columns:310px minmax(0,1fr);max-width:1300px;margin:0 auto}
+@media(max-width:1080px){.layout{grid-template-columns:minmax(0,1fr)}}
+
+.sidebar{border-right:1px solid var(--line);padding:2.4rem 1.5rem 2.4rem 2rem}
+.sidebar-inner{position:sticky;top:1.8rem}
+.brand{font-family:'Bai Jamjuree',sans-serif;font-weight:700;font-size:1.15rem;letter-spacing:.02em;color:var(--teal-deep)}
+.brand .arrow{color:var(--amber)}
+.brand small{display:block;font-family:'Anuphan';font-weight:500;font-size:.78rem;color:var(--ink-soft);margin-top:.2rem}
+.toc{list-style:none;margin-top:1.5rem}
+.toc .grp{font-family:'IBM Plex Mono',monospace;font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);margin:1.1rem 0 .35rem .7rem;display:flex;align-items:center;gap:.45rem}
+.toc .grp::before{content:"";width:9px;height:9px;border-radius:2px;background:var(--gc,var(--teal))}
+.toc li a{display:flex;gap:.6rem;align-items:baseline;padding:.36rem .7rem;border-radius:7px;color:var(--ink-soft);text-decoration:none;font-size:.9rem;font-weight:500;transition:background .15s,color .15s}
+.toc li a .n{font-family:'IBM Plex Mono',monospace;font-size:.7rem;color:var(--amber);min-width:1.5em}
+.toc li a:hover{background:var(--paper-2);color:var(--ink)}
+.toc li a.active{background:var(--teal-soft);color:var(--teal-deep);font-weight:600}
+.toc li a.active .n{color:var(--teal)}
+#tocToggle{display:none;margin-top:.9rem;padding:.4rem .9rem;border:1px solid var(--line);background:#fff;border-radius:7px;font-family:'Anuphan';font-size:.85rem;cursor:pointer;color:var(--ink-soft)}
+@media(max-width:1080px){
+  .sidebar{border-right:0;border-bottom:1px solid var(--line);padding:1.4rem}
+  .sidebar-inner{position:static}
+  .toc{display:none}.toc.open{display:block}#tocToggle{display:inline-block}
+}
+
+main{padding:0 clamp(1.3rem,4vw,4.5rem) 6rem;max-width:880px}
+
+.hero{padding:4.5rem 0 3.2rem;border-bottom:1px solid var(--line)}
+.hero .kicker{font-family:'IBM Plex Mono',monospace;font-size:.78rem;letter-spacing:.14em;color:var(--amber);text-transform:uppercase}
+.hero h1{font-family:'Bai Jamjuree',sans-serif;font-weight:700;font-size:clamp(2.1rem,5vw,3.3rem);line-height:1.2;margin:.7rem 0 1.1rem}
+.hero h1 .g{color:var(--teal)}
+.hero h1 .arrow{color:var(--amber);font-family:'IBM Plex Mono',monospace}
+.hero p.lead{font-size:1.07rem;color:var(--ink-soft);max-width:40em}
+.hero .meta{display:flex;flex-wrap:wrap;gap:.6rem 1.6rem;margin-top:1.6rem;font-size:.83rem;color:var(--ink-soft)}
+.hero .meta b{color:var(--ink);font-weight:600}
+.ladder{display:flex;gap:.4rem;margin-top:1.8rem;flex-wrap:wrap}
+.ladder span{font-family:'IBM Plex Mono',monospace;font-size:.72rem;padding:.3rem .7rem;border-radius:20px;font-weight:500}
+
+.chapter{padding-top:4rem}
+.ch-head{border-bottom:2px solid var(--ink);padding-bottom:.85rem;margin-bottom:1.7rem}
+.ch-head .row{display:flex;align-items:baseline;gap:1.1rem}
+.ch-head .num{font-family:'Bai Jamjuree',sans-serif;font-weight:700;font-size:2.5rem;line-height:1;color:var(--amber)}
+.ch-head h2{font-family:'Bai Jamjuree',sans-serif;font-weight:700;font-size:clamp(1.3rem,2.6vw,1.7rem);line-height:1.3}
+.ch-head .chip{display:inline-block;margin-top:.7rem;font-family:'IBM Plex Mono',monospace;font-size:.7rem;font-weight:600;padding:.2rem .7rem;border-radius:20px;letter-spacing:.03em}
+
+h3{font-family:'Bai Jamjuree',sans-serif;font-weight:600;font-size:1.18rem;margin:2.5rem 0 .8rem;color:var(--teal-deep)}
+h4{font-family:'Bai Jamjuree',sans-serif;font-weight:600;font-size:1rem;margin:1.7rem 0 .5rem}
+p{margin:.85rem 0}strong{font-weight:600}
+ul,ol{margin:.8rem 0 1rem 1.5rem}li{margin:.35rem 0}li::marker{color:var(--amber)}
+code{font-family:'IBM Plex Mono',monospace;font-size:.82em;background:var(--paper-2);border:1px solid var(--line);padding:.08em .4em;border-radius:5px;white-space:nowrap}
+
+pre{background:var(--code-bg);color:var(--code-ink);font-family:'IBM Plex Mono',monospace;font-size:.8rem;line-height:1.75;padding:1.1rem 1.3rem;border-radius:10px;overflow-x:auto;margin:1.2rem 0}
+pre code{background:none;border:0;padding:0;color:inherit;white-space:pre;font-size:inherit}
+pre .c{color:#8fa39b}      /* comment */
+pre .k{color:#f0b35e}      /* git keyword */
+pre .a{color:#9ed0b5}      /* arg / string */
+pre .o{color:#a9b6b2}      /* output */
+pre .p{color:#e88c74}      /* prompt $ */
+
+table{width:100%;border-collapse:collapse;margin:1.4rem 0;font-size:.92rem;line-height:1.6}
+th{font-family:'Bai Jamjuree',sans-serif;font-weight:600;text-align:left;background:var(--ink);color:var(--paper);padding:.6rem .85rem;font-size:.85rem}
+th:first-child{border-radius:8px 0 0 0}th:last-child{border-radius:0 8px 0 0}
+td{padding:.6rem .85rem;border-bottom:1px solid var(--line);vertical-align:top}
+tr:nth-child(even) td{background:rgba(242,237,227,.55)}
+td b{font-weight:600;color:var(--teal-deep)}
+
+.note,.warn,.use{margin:1.6rem 0;padding:1rem 1.2rem .95rem;border-radius:10px;font-size:.94rem}
+.note{background:var(--teal-soft)}.warn{background:var(--red-soft)}.use{background:var(--amber-soft)}
+.note .t,.warn .t,.use .t{font-family:'Bai Jamjuree',sans-serif;font-weight:600;font-size:.86rem;display:block;margin-bottom:.3rem}
+.note .t{color:var(--teal-deep)}.warn .t{color:var(--red)}.use .t{color:var(--amber)}
+
+.fig{margin:2.2rem 0;padding:1.6rem 1.4rem 1.1rem;background:#fff;border:1px solid var(--line);border-radius:12px;overflow-x:auto}
+.fig svg{width:100%;height:auto;display:block;min-width:560px}
+.fig figcaption{margin-top:.9rem;padding-top:.7rem;border-top:1px dashed var(--line);font-size:.83rem;color:var(--ink-soft)}
+.fig figcaption b{color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:.76rem}
+.fig text{font-family:'Anuphan',sans-serif}
+.fig .lbl{font-size:13px;font-weight:600;fill:var(--ink)}
+.fig .lbl-w{font-size:13px;font-weight:600;fill:#fff}
+.fig .sub{font-size:11px;fill:var(--ink-soft)}
+.fig .sub-w{font-size:11px;fill:#cfd8d3}
+.fig .mono{font-family:'IBM Plex Mono',monospace;font-size:11px;fill:var(--ink-soft)}
+.fig .mono-t{font-family:'IBM Plex Mono',monospace;font-size:11px;fill:var(--teal-deep);font-weight:600}
+.fig .mono-a{font-family:'IBM Plex Mono',monospace;font-size:11px;fill:var(--amber);font-weight:600}
+.fig .flow{stroke:var(--ink-soft);stroke-width:1.5;fill:none}
+.fig .flow-t{stroke:var(--teal);stroke-width:1.7;fill:none}
+.fig .flow-a{stroke:var(--amber);stroke-width:1.7;fill:none}
+.fig .flow-r{stroke:var(--red);stroke-width:1.7;fill:none}
+.fig .dash{stroke-dasharray:5 4}
+
+.chapter-end{margin-top:3.2rem;text-align:center;color:var(--amber);font-family:'IBM Plex Mono',monospace;font-size:.8rem;letter-spacing:.5em}
+footer{margin-top:5rem;padding-top:2rem;border-top:2px solid var(--ink);font-size:.88rem;color:var(--ink-soft)}
+footer b{color:var(--ink)}
+
+@media print{
+  #progress,.sidebar,#tocToggle{display:none}
+  .layout{display:block}main{max-width:100%;padding:0}
+  .fig,table,pre,.note,.warn,.use{break-inside:avoid}
+  .fig svg{min-width:0}.chapter{padding-top:2rem}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+
+<svg width="0" height="0" style="position:absolute"><defs>
+  <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M1,1 L8,4.5 L1,8 Z" fill="#54625f"/></marker>
+  <marker id="ar-t" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M1,1 L8,4.5 L1,8 Z" fill="#0e6e63"/></marker>
+  <marker id="ar-a" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M1,1 L8,4.5 L1,8 Z" fill="#c07415"/></marker>
+  <marker id="ar-r" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M1,1 L8,4.5 L1,8 Z" fill="#b3402e"/></marker>
+</defs></svg>
+
+<div class="layout">
+<aside class="sidebar">
+  <div class="sidebar-inner">
+    <div class="brand">GIT <span class="arrow">0 → HERO</span><small>คู่มือฉบับเข้าใจถึงแก่น</small></div>
+    <button id="tocToggle">☰ สารบัญ</button>
+    <ul class="toc" id="toc">
+      <li class="grp" style="--gc:var(--l0)">Level 0 · ปูพื้น</li>
+      <li><a href="#ch1"><span class="n">01</span>Git คืออะไร &amp; ติดตั้ง</a></li>
+      <li><a href="#ch2"><span class="n">02</span>แบบจำลองความคิดหลัก</a></li>
+      <li class="grp" style="--gc:var(--l1)">Level 1 · พื้นฐาน</li>
+      <li><a href="#ch3"><span class="n">03</span>Workflow ประจำวัน</a></li>
+      <li><a href="#ch4"><span class="n">04</span>Branch &amp; Merge</a></li>
+      <li><a href="#ch5"><span class="n">05</span>ทำงานกับ Remote</a></li>
+      <li class="grp" style="--gc:var(--l2)">Level 2 · ระดับกลาง</li>
+      <li><a href="#ch6"><span class="n">06</span>ย้อนกลับ &amp; กู้คืน</a></li>
+      <li><a href="#ch7"><span class="n">07</span>Merge vs Rebase</a></li>
+      <li><a href="#ch8"><span class="n">08</span>Stash · Cherry-pick · Tag</a></li>
+      <li class="grp" style="--gc:var(--l3)">Level 3 · ระดับสูง</li>
+      <li><a href="#ch9"><span class="n">09</span>ทำงานเป็นทีม</a></li>
+      <li><a href="#ch10"><span class="n">10</span>เครื่องมือสืบสวน</a></li>
+      <li class="grp" style="--gc:var(--l4)">Level 4 · ระดับเทพ</li>
+      <li><a href="#ch11"><span class="n">11</span>กลไกภายในของ Git</a></li>
+      <li><a href="#ch12"><span class="n">12</span>เครื่องมือทรงพลัง</a></li>
+      <li><a href="#ch13"><span class="n">13</span>กู้ของหาย &amp; ซ่อมประวัติ</a></li>
+      <li><a href="#ch14"><span class="n">14</span>Repo ใหญ่ &amp; บทสรุป</a></li>
+    </ul>
+  </div>
+</aside>
+
+<main>
+<header class="hero">
+  <div class="kicker">Git Handbook · 14 บท · 5 ระดับ</div>
+  <h1>เข้าใจ <span class="g">Git</span> <span class="arrow">0 → Hero</span><br>ตั้งแต่ commit แรก ถึงแก่นการทำงาน</h1>
+  <p class="lead">คู่มือที่พาคุณจากคนไม่เคยแตะ Git ไปจนเข้าใจว่ามันเก็บข้อมูลอย่างไรในระดับลึกที่สุด — เน้นแบบจำลองความคิดและเหตุผลเบื้องหลัง ไม่ใช่การท่องคำสั่ง</p>
+  <div class="meta">
+    <span>ระดับ: <b>เริ่มจากศูนย์ → ระดับเทพ</b></span>
+    <span>เวลาอ่าน: <b>~90 นาที</b></span>
+    <span>ภาษา: <b>ไทย พร้อมไดอะแกรม</b></span>
+  </div>
+  <div class="ladder">
+    <span style="background:var(--l0-soft);color:var(--l0)">0 · ปูพื้น</span>
+    <span style="background:var(--l1-soft);color:var(--l1)">1 · พื้นฐาน</span>
+    <span style="background:var(--l2-soft);color:var(--l2)">2 · กลาง</span>
+    <span style="background:var(--l3-soft);color:var(--l3)">3 · สูง</span>
+    <span style="background:var(--l4-soft);color:var(--l4)">4 · เทพ</span>
+  </div>
+</header>
+
+<!-- ============================ CH1 ============================ -->
+<section class="chapter" id="ch1">
+  <div class="ch-head">
+    <div class="row"><div class="num">01</div><h2>Git คืออะไร &amp; การติดตั้ง</h2></div>
+    <span class="chip" style="background:var(--l0-soft);color:var(--l0)">LEVEL 0 · ปูพื้นจากศูนย์</span>
+  </div>
+
+  <p>ลองนึกถึงตอนเขียนรายงานแล้วเซฟไฟล์เป็น <code>report_final.doc</code>, <code>report_final2.doc</code>, <code>report_final_จริงๆ.doc</code> — นั่นคือการทำ version control ด้วยมือ ที่พังง่ายและไม่มีทางรู้ว่าแต่ละไฟล์ต่างกันตรงไหน <strong>Git คือเครื่องมือที่ทำสิ่งนี้ให้อย่างเป็นระบบ</strong>: บันทึกทุกช่วงเวลาของโปรเจกต์ไว้ พร้อมข้อมูลว่าใครเปลี่ยนอะไร เมื่อไร และเพราะอะไร แล้วย้อนกลับไปจุดใดก็ได้</p>
+
+  <p>สิ่งที่ทำให้ Git ทรงพลังกว่าการเซฟไฟล์ซ้ำ ๆ คือมันถูกออกแบบมาเพื่อ <strong>การทำงานหลายคนพร้อมกัน</strong> และ <strong>การทดลองโดยไม่กลัวพัง</strong> — แตกเส้นทางการพัฒนาออกไปลองของใหม่ แล้วรวมกลับเข้ามาเมื่อพร้อม โดยของเดิมไม่เคยเสียหาย</p>
+
+  <h3>1.1 Distributed — ทุกเครื่องมีประวัติครบ</h3>
+  <p>จุดต่างสำคัญจากระบบรุ่นเก่า: Git เป็นแบบ <strong>กระจายศูนย์</strong> เมื่อคุณ clone โปรเจกต์มา คุณไม่ได้ได้แค่ไฟล์ล่าสุด แต่ได้ <strong>ประวัติทั้งหมดติดมาในเครื่องด้วย</strong> นั่นแปลว่าการ commit, ดูประวัติ, สลับเวอร์ชัน ทำได้ทันทีโดยไม่ต้องต่อเน็ต และไม่มี "เซิร์ฟเวอร์กลาง" จุดเดียวที่ถ้าพังแล้วงานหายหมด</p>
+
+  <h3>1.2 ติดตั้งและตั้งค่าครั้งแรก</h3>
+  <p>หลังติดตั้ง Git (จาก <code>git-scm.com</code> หรือ package manager) สิ่งแรกที่ต้องทำคือบอก Git ว่าคุณเป็นใคร เพราะทุก commit จะถูกประทับชื่อและอีเมลนี้ไว้ถาวร:</p>
+  <pre><code><span class="p">$</span> <span class="k">git config</span> --global user.name <span class="a">"Khaofang"</span>
+<span class="p">$</span> <span class="k">git config</span> --global user.email <span class="a">"you@example.com"</span>
+<span class="p">$</span> <span class="k">git config</span> --global init.defaultBranch <span class="a">main</span>   <span class="c"># ตั้งชื่อ branch แรกเป็น main</span></code></pre>
+  <p><code>--global</code> หมายถึงตั้งค่านี้ให้ทุกโปรเจกต์ในเครื่อง ตั้งครั้งเดียวพอ</p>
+
+  <h3>1.3 สร้าง repository แรก</h3>
+  <p>คำสั่ง <code>git init</code> เปลี่ยนโฟลเดอร์ธรรมดาให้เป็นโปรเจกต์ที่ Git เฝ้าดู — มันสร้างโฟลเดอร์ซ่อนชื่อ <code>.git/</code> ขึ้นมา ซึ่งเก็บประวัติทั้งหมด (บทที่ 11 จะเปิดดูข้างใน):</p>
+  <pre><code><span class="p">$</span> <span class="k">git init</span>
+<span class="o">Initialized empty Git repository in /myproject/.git/</span>
+<span class="p">$</span> <span class="k">git status</span>
+<span class="o">On branch main · No commits yet</span></code></pre>
+
+  <div class="use"><span class="t">เริ่มอย่างไรดี</span>มีสองทางเข้าสู่โปรเจกต์ Git: <code>git init</code> เมื่อเริ่มโปรเจกต์ใหม่จากศูนย์ในเครื่อง หรือ <code>git clone &lt;url&gt;</code> เมื่อดึงโปรเจกต์ที่มีอยู่แล้วจากเซิร์ฟเวอร์ (บทที่ 5) — สองคำสั่งนี้คือประตูเข้าทั้งหมดที่มี</div>
+
+  <div class="note"><span class="t">สรุปบทที่ 1</span>Git = เครื่องบันทึกทุกช่วงเวลาของโปรเจกต์ พร้อมเหตุผลและผู้รับผิดชอบ · เป็นระบบกระจายศูนย์ ทุก clone มีประวัติครบในตัว · ตั้งชื่อ/อีเมลด้วย <code>git config</code> ครั้งเดียว · เปิดโปรเจกต์ด้วย <code>git init</code> (ใหม่) หรือ <code>git clone</code> (ที่มีอยู่)</div>
+  <div class="chapter-end">· · ·</div>
+</section>
+
+<!-- ============================ CH2 ============================ -->
+<section class="chapter" id="ch2">
+  <div class="ch-head">
+    <div class="row"><div class="num">02</div><h2>แบบจำลองความคิดหลัก</h2></div>
+    <span class="chip" style="background:var(--l0-soft);color:var(--l0)">LEVEL 0 · ปูพื้นจากศูนย์</span>
+  </div>
+
+  <p>บทนี้สำคัญที่สุดในเล่ม ถ้าเข้าใจแนวคิดสามอย่างต่อไปนี้ คำสั่งที่เหลือทั้งหมดจะกลายเป็นเรื่องที่ "เดาได้" แทนที่จะต้องท่องจำ</p>
+
+  <h3>2.1 Git เก็บภาพถ่าย ไม่ใช่ส่วนต่าง</h3>
+  <p>ความเข้าใจผิดที่พบบ่อยคือคิดว่า Git เก็บ "รายการการเปลี่ยนแปลง" ของแต่ละไฟล์ ความจริงคือทุกครั้งที่ commit <strong>Git ถ่ายภาพสถานะของไฟล์ทั้งโปรเจกต์ ณ วินาทีนั้น</strong> แล้วเก็บไว้ทั้งภาพ ไฟล์ไหนไม่เปลี่ยน Git ก็แค่ชี้กลับไปใช้ภาพเดิม (ไม่เก็บซ้ำ จึงไม่เปลืองที่) มอง commit เป็น "เซฟพอยต์" ที่หยิบสถานะทั้งหมดกลับมาได้ทันที ไม่ใช่ผลรวมของ diff ที่ต้องไล่คำนวณ</p>
+
+  <h3>2.2 สามพื้นที่ที่ไฟล์เดินทางผ่าน</h3>
+  <p>หัวใจของการใช้งาน Git คือเข้าใจว่าไฟล์หนึ่งไฟล์มีได้สามสถานะ อยู่ในสามพื้นที่:</p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 720 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ไฟล์เดินทางผ่านสามพื้นที่ของ Git: working directory ที่แก้ไขไฟล์ ไปยัง staging area ด้วย git add แล้วบันทึกถาวรลง repository ด้วย git commit">
+      <rect x="20" y="70" width="190" height="110" rx="12" class="" fill="#fff" stroke="#54625f" stroke-width="1.4"/>
+      <text x="115" y="100" text-anchor="middle" class="lbl">Working Directory</text>
+      <text x="115" y="120" text-anchor="middle" class="sub">โฟลเดอร์ที่คุณแก้ไฟล์จริง</text>
+      <text x="115" y="150" text-anchor="middle" class="mono">แก้ไข สร้าง ลบ ไฟล์</text>
+      <rect x="265" y="70" width="190" height="110" rx="12" fill="#f8ecd8" stroke="#c07415" stroke-width="1.4"/>
+      <text x="360" y="100" text-anchor="middle" class="lbl">Staging Area</text>
+      <text x="360" y="120" text-anchor="middle" class="sub">พื้นที่จัดเตรียม</text>
+      <text x="360" y="150" text-anchor="middle" class="sub">"เลือกว่าจะใส่อะไรในภาพถ่าย"</text>
+      <rect x="510" y="70" width="190" height="110" rx="12" fill="#e2eeea" stroke="#0e6e63" stroke-width="1.4"/>
+      <text x="605" y="100" text-anchor="middle" class="lbl">Repository</text>
+      <text x="605" y="120" text-anchor="middle" class="sub">ประวัติถาวร (.git)</text>
+      <text x="605" y="150" text-anchor="middle" class="sub">ภาพถ่ายที่บันทึกแล้ว</text>
+      <path d="M212 110 L 263 110" class="flow-a" marker-end="url(#ar-a)"/>
+      <text x="237" y="100" text-anchor="middle" class="mono-a">add</text>
+      <path d="M457 110 L 508 110" class="flow-t" marker-end="url(#ar-t)"/>
+      <text x="482" y="100" text-anchor="middle" class="mono-t">commit</text>
+      <path d="M510 165 C 360 215, 200 215, 113 182" class="flow dash" marker-end="url(#ar)"/>
+      <text x="360" y="212" text-anchor="middle" class="mono">checkout / restore — ดึงภาพเก่ากลับมา</text>
+    </svg>
+    <figcaption><b>FIG 2.1</b> — <code>add</code> ย้ายการเปลี่ยนแปลงเข้าพื้นที่จัดเตรียม, <code>commit</code> ผนึกพื้นที่จัดเตรียมเป็นภาพถ่ายถาวร — แยกสองขั้นเพื่อให้ "เลือก" ได้ว่าจะบันทึกอะไร</figcaption>
+  </figure>
+
+  <p>ทำไมต้องมีพื้นที่จัดเตรียม (staging) คั่นกลาง? เพราะมันให้คุณ <strong>ประกอบ commit อย่างตั้งใจ</strong> — แก้ไปสิบไฟล์ แต่เลือก add แค่สามไฟล์ที่เป็นเรื่องเดียวกันมา commit ก่อนได้ ทำให้ประวัติแต่ละ commit เล่าเรื่องชัดเจนทีละเรื่อง ไม่ปนกันมั่ว</p>
+
+  <h3>2.3 SHA — ลายนิ้วมือของทุกอย่าง</h3>
+  <p>ทุก commit มีรหัสประจำตัวยาว 40 ตัวอักษร เช่น <code>9f2c1a8...</code> รหัสนี้ไม่ได้สุ่มมา แต่<strong>คำนวณจากเนื้อหาของ commit เองทั้งหมด</strong> (ไฟล์ + ข้อความ + ผู้เขียน + commit ก่อนหน้า) ผลที่ตามมาคือสิ่งที่ลึกซึ้งมาก: ถ้าเนื้อหาเปลี่ยนแม้ตัวอักษรเดียว รหัสจะเปลี่ยนทันที — แปลว่า <strong>commit แก้ไขไม่ได้</strong> การ "แก้ประวัติ" จริง ๆ คือการสร้าง commit ใหม่ที่มีรหัสใหม่มาแทน (เข้าใจจุดนี้แล้ว บทที่ 6, 7, 11 จะกระจ่างทันที)</p>
+
+  <div class="note"><span class="t">สรุปบทที่ 2</span>commit = ภาพถ่ายทั้งโปรเจกต์ ไม่ใช่ส่วนต่าง · ไฟล์เดินทางผ่าน 3 พื้นที่: working → staging (<code>add</code>) → repository (<code>commit</code>) · staging มีไว้ให้ประกอบ commit อย่างตั้งใจ · SHA คำนวณจากเนื้อหา ทำให้ commit แก้ไม่ได้และปลอมไม่ได้ — รากฐานของความน่าเชื่อถือทั้งหมดของ Git</div>
+  <div class="chapter-end">· · ·</div>
+</section>
+
+<!-- ============================ CH3 ============================ -->
+<section class="chapter" id="ch3">
+  <div class="ch-head">
+    <div class="row"><div class="num">03</div><h2>Workflow ประจำวัน</h2></div>
+    <span class="chip" style="background:var(--l1-soft);color:var(--l1)">LEVEL 1 · พื้นฐานที่ใช้ทุกวัน</span>
+  </div>
+
+  <p>วงจรการทำงานจริงของ Git แทบทั้งหมดวนอยู่ในสี่จังหวะ: <strong>แก้ → ดูว่าแก้อะไรไป → เลือกเข้าพื้นที่จัดเตรียม → บันทึก</strong> เข้าใจสี่คำสั่งนี้แล้วคุณทำงานได้ 90% ของชีวิตประจำวัน</p>
+
+  <h3>3.1 status — เข็มทิศที่ต้องดูบ่อยที่สุด</h3>
+  <p><code>git status</code> บอกว่าตอนนี้ไฟล์ไหนอยู่สถานะใด — แก้แล้วแต่ยังไม่ add (<span style="color:var(--red)">untracked / modified</span>), add แล้วรอ commit (<span style="color:var(--teal-deep)">staged</span>) มือใหม่ควรพิมพ์คำสั่งนี้บ่อย ๆ จนเป็นนิสัย มันคือเข็มทิศที่กันหลงทาง</p>
+
+  <h3>3.2 วงจรพื้นฐาน add → commit</h3>
+  <pre><code><span class="p">$</span> <span class="k">git status</span>              <span class="c"># 1. ดูว่ามีอะไรเปลี่ยน</span>
+<span class="p">$</span> <span class="k">git diff</span>                <span class="c"># 2. ดูว่าเปลี่ยน "อะไร" ทีละบรรทัด</span>
+<span class="p">$</span> <span class="k">git add</span> <span class="a">login.js</span>       <span class="c"># 3. เลือกไฟล์เข้าพื้นที่จัดเตรียม</span>
+<span class="p">$</span> <span class="k">git commit</span> -m <span class="a">"เพิ่มหน้า login"</span>   <span class="c"># 4. ผนึกเป็นภาพถ่ายถาวร</span></code></pre>
+  <p>ข้อความ commit (<code>-m</code>) ไม่ใช่พิธีกรรม — มันคือบันทึกที่ "ตัวคุณในอีกหกเดือน" จะอ่านเพื่อเข้าใจว่าทำไมโค้ดถึงเป็นแบบนี้ เขียนให้บอก <strong>เหตุผล</strong> ไม่ใช่แค่สิ่งที่ทำ</p>
+
+  <h3>3.3 log — อ่านประวัติ</h3>
+  <pre><code><span class="p">$</span> <span class="k">git log</span> --oneline --graph
+<span class="o">* 9f2c1a8 เพิ่มหน้า login</span>
+<span class="o">* 3b7d8c1 แก้บั๊กการคำนวณยอด</span>
+<span class="o">* a1e9f02 ตั้งค่าโปรเจกต์เริ่มต้น</span></code></pre>
+
+  <h3>3.4 .gitignore — บอก Git ว่าอะไรไม่ต้องสน</h3>
+  <p>บางไฟล์ไม่ควรอยู่ในประวัติ: รหัสลับ (<code>.env</code>), ไฟล์ที่สร้างอัตโนมัติ (<code>node_modules/</code>, <code>build/</code>), ไฟล์ระบบ (<code>.DS_Store</code>) ใส่ชื่อหรือรูปแบบลงไฟล์ <code>.gitignore</code> แล้ว Git จะมองข้ามถาวร</p>
+  <pre><code><span class="c"># .gitignore</span>
+<span class="a">node_modules/</span>
+<span class="a">.env</span>
+<span class="a">*.log</span>
+<span class="a">dist/</span></code></pre>
+  <div class="warn"><span class="t">ระวัง</span><code>.gitignore</code> กันเฉพาะไฟล์ที่ Git <strong>ยังไม่เคยติดตาม</strong> ถ้าเผลอ commit <code>.env</code> ที่มีรหัสลับไปแล้ว การใส่ใน <code>.gitignore</code> ทีหลังไม่ช่วย — ไฟล์ยังอยู่ในประวัติ ต้องลบออกจากการติดตามด้วย <code>git rm --cached .env</code> และถ้าเป็นรหัสลับจริงควรถือว่ามันรั่วแล้ว ต้องเปลี่ยนรหัส</div>
+
+  <div class="note"><span class="t">สรุปบทที่ 3</span>วงจรประจำวัน: <code>status</code> → <code>diff</code> → <code>add</code> → <code>commit</code> · ดู <code>status</code> ให้ติดเป็นนิสัย · ข้อความ commit เขียนเพื่ออธิบายเหตุผลให้คนในอนาคต · <code>.gitignore</code> กันไฟล์ลับและไฟล์ขยะ แต่กันได้เฉพาะไฟล์ที่ยังไม่เคยติดตาม</div>
+  <div class="chapter-end">· · ·</div>
+</section>
+
+<!-- ============================ CH4 ============================ -->
+<section class="chapter" id="ch4">
+  <div class="ch-head">
+    <div class="row"><div class="num">04</div><h2>Branch &amp; Merge</h2></div>
+    <span class="chip" style="background:var(--l1-soft);color:var(--l1)">LEVEL 1 · พื้นฐานที่ใช้ทุกวัน</span>
+  </div>
+
+  <p>Branch คือสิ่งที่ทำให้ Git เปลี่ยนวิธีทำงานของคนทั้งวงการ แต่คนส่วนใหญ่เข้าใจมันซับซ้อนเกินจริง ความจริงนั้นเรียบง่ายมาก</p>
+
+  <h3>4.1 Branch คือป้ายชี้ ไม่ใช่สำเนา</h3>
+  <p>หลายคนคิดว่าสร้าง branch คือก๊อปโปรเจกต์ทั้งชุด ผิดอย่างสิ้นเชิง <strong>branch เป็นเพียงป้ายเล็ก ๆ ที่ชี้ไปยัง commit หนึ่งดวง</strong> — เบาแค่ไฟล์ข้อความที่เก็บรหัส SHA หนึ่งบรรทัด นี่คือเหตุผลที่สร้าง branch ใหม่เร็วทันใจและแทบไม่กินที่เลย ส่วน <code>HEAD</code> คือป้ายพิเศษที่บอกว่า "ตอนนี้คุณกำลังยืนอยู่ที่ branch ไหน"</p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 720 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="commit graph แสดง commit ต่อกันเป็นสายโซ่ มี branch main ชี้ commit หลัก และ branch feature แตกออกไป โดย HEAD ชี้ที่ feature">
+      <line x1="80" y1="150" x2="430" y2="150" class="flow"/>
+      <circle cx="100" cy="150" r="22" fill="#e2eeea" stroke="#0e6e63" stroke-width="1.6"/><text x="100" y="154" text-anchor="middle" class="mono">A</text>
+      <circle cx="230" cy="150" r="22" fill="#e2eeea" stroke="#0e6e63" stroke-width="1.6"/><text x="230" y="154" text-anchor="middle" class="mono">B</text>
+      <circle cx="360" cy="150" r="22" fill="#e2eeea" stroke="#0e6e63" stroke-width="1.6"/><text x="360" y="154" text-anchor="middle" class="mono">C</text>
+      <!-- feature branch -->
+      <line x1="378" y1="135" x2="540" y2="85" class="flow-a"/>
+      <circle cx="560" cy="78" r="22" fill="#f8ecd8" stroke="#c07415" stroke-width="1.6"/><text x="560" y="82" text-anchor="middle" class="mono">D</text>
+      <!-- pointers -->
+      <rect x="320" y="195" width="80" height="28" rx="6" fill="#0e6e63"/><text x="360" y="214" text-anchor="middle" class="lbl-w" style="font-size:12px">main</text>
+      <path d="M360 195 L 360 174" class="flow-t" marker-end="url(#ar-t)"/>
+      <rect x="520" y="20" width="90" height="28" rx="6" fill="#c07415"/><text x="565" y="39" text-anchor="middle" class="lbl-w" style="font-size:12px">feature</text>
+      <path d="M565 48 L 562 56" class="flow-a" marker-end="url(#ar-a)"/>
+      <rect x="625" y="62" width="70" height="28" rx="6" fill="#222b2e"/><text x="660" y="81" text-anchor="middle" class="lbl-w" style="font-size:12px">HEAD</text>
+      <path d="M623 76 L 586 77" class="flow" marker-end="url(#ar)"/>
+    </svg>
+    <figcaption><b>FIG 4.1</b> — commit ต่อกันเป็นสายโซ่ (แต่ละดวงชี้กลับไปหา commit ก่อนหน้า) · <code>main</code> และ <code>feature</code> เป็นแค่ป้ายชี้ commit · <code>HEAD</code> บอกว่าคุณยืนอยู่ที่ feature</figcaption>
+  </figure>
+
+  <pre><code><span class="p">$</span> <span class="k">git switch</span> -c <span class="a">feature</span>     <span class="c"># สร้าง branch ใหม่ + ย้ายไปยืนที่นั่น</span>
+<span class="p">$</span> <span class="k">git switch</span> <span class="a">main</span>          <span class="c"># ย้ายกลับมา main (HEAD ขยับ)</span></code></pre>
+  <p>เมื่อ <code>HEAD</code> ขยับไป branch ไหน Git จะปรับไฟล์ในโฟลเดอร์ให้ตรงกับภาพถ่ายของ branch นั้นทันที — คุณจึงทดลองบน <code>feature</code> ได้อย่างอิสระโดย <code>main</code> ไม่กระทบเลย</p>
+
+  <h3>4.2 Merge — รวมเส้นทางกลับเข้าด้วยกัน</h3>
+  <p>เมื่องานบน <code>feature</code> เสร็จ ก็รวมกลับเข้า <code>main</code> ด้วย <code>merge</code> ซึ่งมีสองหน้าตาขึ้นกับสถานการณ์:</p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 720 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="เปรียบเทียบ fast-forward ที่เลื่อนป้าย main ไปข้างหน้าตรง ๆ กับ merge commit ที่สร้าง commit ใหม่รวมสองสายเข้าด้วยกัน">
+      <text x="180" y="28" text-anchor="middle" class="lbl">Fast-forward</text>
+      <text x="180" y="46" text-anchor="middle" class="sub">main ไม่มีอะไรใหม่ — แค่เลื่อนป้าย</text>
+      <line x1="50" y1="110" x2="310" y2="110" class="flow"/>
+      <circle cx="70" cy="110" r="16" fill="#e2eeea" stroke="#0e6e63"/><text x="70" y="114" text-anchor="middle" class="mono">A</text>
+      <circle cx="180" cy="110" r="16" fill="#e2eeea" stroke="#0e6e63"/><text x="180" y="114" text-anchor="middle" class="mono">B</text>
+      <circle cx="290" cy="110" r="16" fill="#f8ecd8" stroke="#c07415"/><text x="290" y="114" text-anchor="middle" class="mono">C</text>
+      <text x="290" y="150" text-anchor="middle" class="mono-t">main ←เลื่อนมาที่นี่</text>
+      <line x1="370" y1="20" x2="370" y2="235" stroke="#ddd5c6"/>
+      <text x="545" y="28" text-anchor="middle" class="lbl">Merge commit</text>
+      <text x="545" y="46" text-anchor="middle" class="sub">ทั้งสองสายมีงานใหม่ — สร้าง commit รวม</text>
+      <line x1="410" y1="130" x2="520" y2="130" class="flow"/>
+      <circle cx="430" cy="130" r="16" fill="#e2eeea" stroke="#0e6e63"/><text x="430" y="134" text-anchor="middle" class="mono">A</text>
+      <circle cx="520" cy="130" r="16" fill="#e2eeea" stroke="#0e6e63"/><text x="520" y="134" text-anchor="middle" class="mono">B</text>
+      <line x1="533" y1="120" x2="600" y2="80" class="flow-a"/>
+      <circle cx="615" cy="72" r="16" fill="#f8ecd8" stroke="#c07415"/><text x="615" y="76" text-anchor="middle" class="mono">D</text>
+      <line x1="533" y1="140" x2="600" y2="178" class="flow-t"/>
+      <circle cx="615" cy="186" r="16" fill="#e2eeea" stroke="#0e6e63"/><text x="615" y="190" text-anchor="middle" class="mono">E</text>
+      <line x1="630" y1="80" x2="675" y2="120" class="flow"/><line x1="630" y1="178" x2="675" y2="138" class="flow"/>
+      <circle cx="688" cy="129" r="16" fill="#222b2e" stroke="#222b2e"/><text x="688" y="133" text-anchor="middle" class="lbl-w" style="font-size:11px">M</text>
+      <text x="688" y="165" text-anchor="middle" class="sub">merge</text>
+    </svg>
+    <figcaption><b>FIG 4.2</b> — ถ้า main ไม่มี commit ใหม่นับจากจุดแตก Git แค่เลื่อนป้าย (fast-forward) · ถ้าทั้งสองสายต่างมีงานใหม่ Git สร้าง merge commit ที่มี "พ่อแม่สองคน" เพื่อผูกประวัติเข้าด้วยกัน</figcaption>
+  </figure>
+
+  <div class="use"><span class="t">conflict ไม่ใช่เรื่องน่ากลัว</span>เมื่อสองสายแก้ไฟล์เดียวกันบรรทัดเดียวกัน Git ไม่เดาสุ่ม — มันหยุดและขอให้คุณตัดสินใจ เรียกว่า merge conflict คุณเปิดไฟล์ เลือกว่าจะเก็บฝั่งไหน (หรือผสมเอง) ลบเครื่องหมาย <code>&lt;&lt;&lt;</code> ออก แล้ว commit (ลงลึกในบทที่ 9)</div>
+
+  <div class="note"><span class="t">สรุปบทที่ 4</span>branch = ป้ายชี้ commit ที่เบาและสร้างเร็ว ไม่ใช่สำเนาโปรเจกต์ · <code>HEAD</code> = ตำแหน่งที่คุณยืนอยู่ · <code>switch</code> ขยับ HEAD และปรับไฟล์ให้ตรง branch · merge มีสองแบบ: fast-forward (เลื่อนป้าย) และ merge commit (รวมสองสายที่ต่างมีงานใหม่)</div>
+  <div class="chapter-end">· · ·</div>
+</section>
+
+<!-- ============================ CH5 ============================ -->
+<section class="chapter" id="ch5">
+  <div class="ch-head">
+    <div class="row"><div class="num">05</div><h2>ทำงานกับ Remote</h2></div>
+    <span class="chip" style="background:var(--l1-soft);color:var(--l1)">LEVEL 1 · พื้นฐานที่ใช้ทุกวัน</span>
+  </div>
+
+  <p>จนถึงบทนี้ทุกอย่างเกิดในเครื่องคุณคนเดียว Remote คือสำเนาของ repository ที่อยู่บนเซิร์ฟเวอร์ (เช่น GitHub) ทำหน้าที่เป็นจุดนัดพบให้ทีมแลกเปลี่ยนงานกัน</p>
+
+  <h3>5.1 clone และ origin</h3>
+  <p><code>git clone &lt;url&gt;</code> ดึงทั้ง repository (ประวัติครบ) ลงเครื่อง และตั้งชื่อย่อให้เซิร์ฟเวอร์ต้นทางว่า <code>origin</code> โดยอัตโนมัติ — <code>origin</code> เป็นแค่ชื่อเล่นของ URL ยาว ๆ จะได้ไม่ต้องพิมพ์ซ้ำ</p>
+
+  <h3>5.2 fetch ต่างจาก pull อย่างไร — จุดที่คนสับสนมากที่สุด</h3>
+
+  <figure class="fig">
+    <svg viewBox="0 0 720 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="fetch ดาวน์โหลด commit ใหม่จาก remote มาเก็บไว้เฉย ๆ ให้ตรวจก่อน ส่วน pull คือ fetch แล้ว merge เข้า branch ทันทีในขั้นตอนเดียว">
+      <rect x="30" y="90" width="150" height="56" rx="10" fill="#fff" stroke="#54625f" stroke-width="1.4"/>
+      <text x="105" y="115" text-anchor="middle" class="lbl">เครื่องคุณ</text>
+      <text x="105" y="133" text-anchor="middle" class="sub">local branch</text>
+      <rect x="540" y="90" width="150" height="56" rx="10" fill="#e2eeea" stroke="#0e6e63" stroke-width="1.4"/>
+      <text x="615" y="115" text-anchor="middle" class="lbl">origin</text>
+      <text x="615" y="133" text-anchor="middle" class="sub">เซิร์ฟเวอร์ (GitHub)</text>
+      <!-- fetch -->
+      <path d="M538 100 C 400 60, 250 60, 182 96" class="flow-t" marker-end="url(#ar-t)"/>
+      <text x="360" y="58" text-anchor="middle" class="mono-t">fetch — ดาวน์โหลดมาเก็บไว้เฉย ๆ (ยังไม่รวม)</text>
+      <!-- pull -->
+      <path d="M538 140 C 400 185, 250 185, 182 142" class="flow-a" marker-end="url(#ar-a)"/>
+      <text x="360" y="205" text-anchor="middle" class="mono-a">pull = fetch + merge — ดาวน์โหลดแล้วรวมเข้า branch ทันที</text>
+      <!-- push -->
+      <path d="M182 110 C 320 110, 420 110, 536 118" class="flow" marker-end="url(#ar)"/>
+      <text x="360" y="106" text-anchor="middle" class="mono">push — ส่งงานของคุณขึ้นไป</text>
+    </svg>
+    <figcaption><b>FIG 5.1</b> — <code>fetch</code> = ดาวน์โหลดงานใหม่มาดูก่อน ปลอดภัยเสมอ · <code>pull</code> = fetch แล้ว merge เข้า branch ให้เลยในก้าวเดียว · <code>push</code> = ส่งงานของคุณขึ้นเซิร์ฟเวอร์</figcaption>
+  </figure>
+
+  <p>กฎง่าย ๆ: <code>fetch</code> ไม่เคยแก้ไฟล์ในโฟลเดอร์คุณ มันแค่อัปเดต "ความรู้" ว่าเซิร์ฟเวอร์มีอะไรใหม่ ส่วน <code>pull</code> เปลี่ยนไฟล์จริงเพราะมัน merge ให้เลย ถ้าอยากเห็นก่อนว่าทีมเปลี่ยนอะไรมาแล้วค่อยรวม ให้ <code>fetch</code> แล้วดู <code>git log origin/main</code> ก่อน</p>
+
+  <h3>5.3 push และ tracking branch</h3>
+  <pre><code><span class="p">$</span> <span class="k">git push</span> -u <span class="a">origin main</span>   <span class="c"># ส่งขึ้น + ผูก local กับ origin/main</span>
+<span class="p">$</span> <span class="k">git push</span>                  <span class="c"># ครั้งต่อไปพิมพ์สั้น ๆ ได้เลย</span></code></pre>
+  <p><code>-u</code> สร้างความสัมพันธ์ "tracking" ระหว่าง branch ในเครื่องกับบนเซิร์ฟเวอร์ ครั้งเดียวพอ หลังจากนั้น Git รู้เองว่า <code>push</code>/<code>pull</code> ควรคุยกับ branch ไหน</p>
+
+  <div class="warn"><span class="t">push ถูกปฏิเสธ?</span>ถ้า <code>push</code> ไม่ผ่านเพราะ "remote มี commit ที่คุณยังไม่มี" แปลว่ามีคนส่งงานขึ้นไปก่อน — ดึงงานเขาลงมารวมก่อนด้วย <code>git pull</code> แล้วค่อย push อย่าใช้ <code>--force</code> มาทับ เพราะนั่นจะลบงานเพื่อนทิ้ง (เหตุผลเต็มในบทที่ 7 และ 13)</div>
+
+  <div class="note"><span class="t">สรุปบทที่ 5</span><code>clone</code> ดึง repo + ตั้งชื่อต้นทางว่า <code>origin</code> · <code>fetch</code> ดาวน์โหลดมาดูเฉย ๆ ปลอดภัย, <code>pull</code> = fetch + merge เปลี่ยนไฟล์จริง · <code>push</code> ส่งงานขึ้น, <code>-u</code> ผูก tracking ครั้งเดียว · push ถูกปฏิเสธให้ pull ก่อน ไม่ใช่ force</div>
+  <div class="chapter-end">· · ·</div>
+</section>
+
+<!-- ============================ CH6 ============================ -->
+<section class="chapter" id="ch6">
+  <div class="ch-head">
+    <div class="row"><div class="num">06</div><h2>ย้อนกลับ &amp; กู้คืน</h2></div>
+    <span class="chip" style="background:var(--l2-soft);color:var(--l2)">LEVEL 2 · ระดับกลาง</span>
+  </div>
+
+  <p>ความกลัวที่สุดของมือใหม่คือ "ทำพัง แล้วงานหาย" ความจริงคือ Git ออกแบบมาให้กู้คืนได้แทบทุกอย่าง ขอแค่เคย commit ไว้ บทนี้คือตาข่ายนิรภัยของคุณ — และกุญแจคือเข้าใจว่าแต่ละคำสั่ง "ย้อน" คนละชั้นกัน</p>
+
+  <h3>6.1 restore — ทิ้งการแก้ที่ยังไม่ commit</h3>
+  <p>แก้ไฟล์มั่วจนอยากเริ่มใหม่? <code>git restore &lt;file&gt;</code> ดึงไฟล์กลับไปเป็นเหมือน commit ล่าสุด ส่วน <code>git restore --staged &lt;file&gt;</code> เอาไฟล์ออกจากพื้นที่จัดเตรียม (ถอน add) โดยไม่ทิ้งการแก้</p>
+
+  <h3>6.2 reset — เลื่อนป้าย branch ถอยหลัง</h3>
+  <p>เข้าใจ <code>reset</code> ได้ทันทีถ้าจำว่ามันแค่ <strong>เลื่อนป้าย branch ไปชี้ commit อื่น</strong> ความต่างอยู่ที่ว่ามันจะแตะพื้นที่จัดเตรียมและไฟล์จริงด้วยไหม:</p>
+  <table>
+    <thead><tr><th>โหมด</th><th>เลื่อนป้าย</th><th>พื้นที่จัดเตรียม</th><th>ไฟล์จริง</th><th>ใช้เมื่อ</th></tr></thead>
+    <tbody>
+      <tr><td><code>--soft</code></td><td>✓</td><td>คงไว้</td><td>คงไว้</td><td>รวมหลาย commit เป็นอันเดียว, แก้ข้อความ</td></tr>
+      <tr><td><code>--mixed</code> <span class="sub">(ค่าเริ่มต้น)</span></td><td>✓</td><td>ล้าง</td><td>คงไว้</td><td>ถอน commit แต่เก็บงานไว้ add ใหม่</td></tr>
+      <tr><td><code>--hard</code></td><td>✓</td><td>ล้าง</td><td><b style="color:var(--red)">ลบทิ้ง</b></td><td>ทิ้งทุกอย่าง กลับไปจุดเดิมจริง ๆ</td></tr>
+    </tbody>
+  </table>
+  <div class="warn"><span class="t">--hard คือคำสั่งเดียวที่ลบงานจริง</span><code>reset --hard</code> ทิ้งการแก้ที่ยังไม่ commit อย่างถาวร ใช้เมื่อแน่ใจเท่านั้น แต่ commit ที่ถูก "ทิ้ง" ไปยังกู้ได้จาก reflog (หัวข้อ 6.4) — ของที่หายจริงคือการแก้ที่ไม่เคย commit เลยเท่านั้น</div>
+
+  <h3>6.3 revert — ย้อนแบบปลอดภัยสำหรับงานที่แชร์แล้ว</h3>
+  <p><code>reset</code> เขียนประวัติใหม่ จึงห้ามใช้กับ commit ที่ push ขึ้นไปแล้ว (คนอื่นมีของชุดนั้นอยู่) ทางที่ถูกคือ <code>git revert &lt;commit&gt;</code> ซึ่ง <strong>สร้าง commit ใหม่ที่ทำตรงข้ามกับ commit เดิม</strong> — ผลลัพธ์เหมือนยกเลิก แต่ประวัติเดินหน้าต่อ ไม่มีใครเดือดร้อน</p>
+
+  <h3>6.4 reflog — ตาข่ายนิรภัยที่ช่วยชีวิต</h3>
+  <p>นี่คือคำสั่งที่จะทำให้คุณเลิกกลัว Git ตลอดไป ทุกครั้งที่ <code>HEAD</code> ขยับ — commit, switch, reset, rebase — Git จดไว้ใน <strong>reflog</strong> สมุดบันทึกส่วนตัวในเครื่อง ถึงจะ <code>reset --hard</code> ทิ้ง commit ไปแล้ว commit นั้นก็ยังอยู่ และ reflog ยังจำรหัสมันได้:</p>
+  <pre><code><span class="p">$</span> <span class="k">git reflog</span>
+<span class="o">a1e9f02 HEAD@{0}: reset: moving to a1e9f02   ← จุดที่เพิ่งพลาด (ย้อนไป init)</span>
+<span class="o">9f2c1a8 HEAD@{1}: commit: เพิ่มหน้า login   ← commit ที่นึกว่าหาย</span>
+<span class="p">$</span> <span class="k">git reset</span> --hard <span class="a">9f2c1a8</span>      <span class="c"># ดึงกลับมา — งานกลับมาครบ</span></code></pre>
+
+  <div class="note"><span class="t">สรุปบทที่ 6</span><code>restore</code> ทิ้งการแก้ที่ยังไม่ commit · <code>reset</code> เลื่อนป้าย branch (soft เก็บงาน, hard ลบงาน) ใช้กับงานที่ยังไม่แชร์ · <code>revert</code> สร้าง commit ตรงข้าม ใช้กับงานที่ push แล้ว · <code>reflog</code> จำทุกที่ที่ HEAD เคยอยู่ — กู้ commit ที่นึกว่าหายได้เสมอ</div>
+  <div class="chapter-end">· · ·</div>
+</section>
+
+<!-- ============================ CH7 ============================ -->
+<section class="chapter" id="ch7">
+  <div class="ch-head">
+    <div class="row"><div class="num">07</div><h2>Merge vs Rebase</h2></div>
+    <span class="chip" style="background:var(--l2-soft);color:var(--l2)">LEVEL 2 · ระดับกลาง</span>
+  </div>
+
+  <p>สองคำสั่งนี้ตอบโจทย์เดียวกัน — "เอางานสองสายมารวมกัน" — แต่ให้ประวัติคนละหน้าตา การเลือกใช้สะท้อนปรัชญาว่าคุณอยากให้ประวัติ <strong>บอกความจริงตามที่เกิด</strong> หรือ <strong>เล่าเรื่องให้อ่านง่าย</strong></p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 720 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="merge รักษาประวัติตามจริงโดยสร้าง merge commit รวมสองสาย ส่วน rebase ยกงานของ feature ไปต่อท้าย main ทำให้ประวัติเป็นเส้นตรงเส้นเดียว">
+      <text x="180" y="26" text-anchor="middle" class="lbl">Merge — เก็บความจริง</text>
+      <line x1="50" y1="110" x2="200" y2="110" class="flow"/>
+      <circle cx="65" cy="110" r="15" fill="#e2eeea" stroke="#0e6e63"/><text x="65" y="114" text-anchor="middle" class="mono">A</text>
+      <circle cx="140" cy="110" r="15" fill="#e2eeea" stroke="#0e6e63"/><text x="140" y="114" text-anchor="middle" class="mono">B</text>
+      <circle cx="215" cy="110" r="15" fill="#e2eeea" stroke="#0e6e63"/><text x="215" y="114" text-anchor="middle" class="mono">C</text>
+      <line x1="152" y1="100" x2="210" y2="62" class="flow-a"/>
+      <circle cx="225" cy="55" r="15" fill="#f8ecd8" stroke="#c07415"/><text x="225" y="59" text-anchor="middle" class="mono">D</text>
+      <line x1="228" y1="110" x2="285" y2="90" class="flow"/><line x1="238" y1="58" x2="288" y2="80" class="flow"/>
+      <circle cx="300" cy="86" r="15" fill="#222b2e"/><text x="300" y="90" text-anchor="middle" class="lbl-w" style="font-size:11px">M</text>
+      <text x="180" y="160" text-anchor="middle" class="sub">ประวัติแตกแล้วบรรจบ — เห็นว่าเคยทำงานคู่ขนาน</text>
+      <line x1="370" y1="20" x2="370" y2="235" stroke="#ddd5c6"/>
+      <text x="545" y="26" text-anchor="middle" class="lbl">Rebase — เล่าใหม่ให้ตรง</text>
+      <line x1="420" y1="110" x2="690" y2="110" class="flow-t"/>
+      <circle cx="435" cy="110" r="15" fill="#e2eeea" stroke="#0e6e63"/><text x="435" y="114" text-anchor="middle" class="mono">A</text>
+      <circle cx="510" cy="110" r="15" fill="#e2eeea" stroke="#0e6e63"/><text x="510" y="114" text-anchor="middle" class="mono">B</text>
+      <circle cx="585" cy="110" r="15" fill="#e2eeea" stroke="#0e6e63"/><text x="585" y="114" text-anchor="middle" class="mono">C</text>
+      <circle cx="660" cy="110" r="15" fill="#f8ecd8" stroke="#c07415"/><text x="660" y="114" text-anchor="middle" class="mono">D'</text>
+      <text x="545" y="160" text-anchor="middle" class="sub">เส้นตรงเส้นเดียว — D ถูกยกมาต่อท้าย กลายเป็น D'</text>
+      <text x="545" y="180" text-anchor="middle" class="sub-w"> </text>
+      <text x="618" y="186" text-anchor="middle" class="mono-a">D' = commit ใหม่ รหัสเปลี่ยน</text>
+    </svg>
+    <figcaption><b>FIG 7.1</b> — merge เก็บร่องรอยว่าเคยแยกสาย (มี merge commit M) · rebase ยก commit ของ feature ไปวางต่อท้าย main ใหม่ ได้ประวัติเส้นตรงสะอาด แต่ D กลายเป็น D' ที่มีรหัสใหม่ (เพราะ commit แก้ไม่ได้ — บทที่ 2)</figcaption>
+  </figure>
+
+  <h3>7.1 เลือกอย่างไร</h3>
+  <table>
+    <thead><tr><th></th><th>Merge</th><th>Rebase</th></tr></thead>
+    <tbody>
+      <tr><td><b>ประวัติ</b></td><td>ตามจริง เห็นการแตกสาย</td><td>เส้นตรง อ่านเป็นเรื่องเดียว</td></tr>
+      <tr><td><b>commit เดิม</b></td><td>คงไว้ทั้งหมด</td><td>สร้างใหม่ (รหัสเปลี่ยน)</td></tr>
+      <tr><td><b>เหมาะกับ</b></td><td>รวมงานเข้า branch หลักที่แชร์กัน</td><td>เก็บกวาด branch ส่วนตัวให้สะอาดก่อนเสนอ</td></tr>
+    </tbody>
+  </table>
+
+  <h3>7.2 interactive rebase — เครื่องมือเก็บกวาดประวัติ</h3>
+  <p><code>git rebase -i</code> ให้คุณแก้ชุด commit ก่อนเสนอเข้าทีม — รวมหลาย commit ย่อย ("แก้ typo", "แก้ typo อีกที") ให้เหลือก้อนเดียวที่มีความหมาย, เปลี่ยนข้อความ, สลับลำดับ คำสั่งที่ใช้บ่อย: <code>squash</code> (ยุบรวม), <code>reword</code> (แก้ข้อความ), <code>fixup</code> (ยุบโดยทิ้งข้อความ), <code>drop</code> (ลบ commit)</p>
+
+  <div class="warn"><span class="t">กฎทองของ rebase</span><strong>อย่า rebase commit ที่ push ขึ้นที่แชร์กับคนอื่นแล้ว</strong> เพราะ rebase สร้าง commit ชุดใหม่ (รหัสเปลี่ยนหมด) ถ้าคนอื่นมีชุดเดิมอยู่ ประวัติจะขัดกันจนพันกันยุ่ง — rebase ได้อย่างอิสระเฉพาะ commit ที่ยังอยู่ในเครื่องคุณคนเดียว</div>
+
+  <div class="note"><span class="t">สรุปบทที่ 7</span>merge เก็บประวัติตามจริง (มี merge commit), rebase ทำประวัติให้เป็นเส้นตรงโดยสร้าง commit ใหม่ · ใช้ rebase เก็บกวาด branch ส่วนตัว, ใช้ merge รวมเข้า branch หลัก · <code>rebase -i</code> ยุบ/แก้/จัดเรียง commit ก่อนเสนอ · กฎเหล็ก: ห้าม rebase สิ่งที่แชร์ไปแล้ว</div>
+  <div class="chapter-end">· · ·</div>
+</section>
+
+<!-- ============================ CH8 ============================ -->
+<section class="chapter" id="ch8">
+  <div class="ch-head">
+    <div class="row"><div class="num">08</div><h2>Stash · Cherry-pick · Tag</h2></div>
+    <span class="chip" style="background:var(--l2-soft);color:var(--l2)">LEVEL 2 · ระดับกลาง</span>
+  </div>
+
+  <p>สามเครื่องมือที่ไม่ได้ใช้ทุกวัน แต่วันที่ต้องใช้มันช่วยได้มาก</p>
+
+  <h3>8.1 stash — พักงานค้างไว้ชั่วคราว</h3>
+  <p>กำลังแก้อยู่ครึ่งทาง แล้วต้องรีบสลับไปแก้บั๊กด่วนอีก branch? <code>git stash</code> เก็บงานที่ยังไม่ commit เข้าที่พักชั่วคราว คืนโฟลเดอร์ให้สะอาด พอกลับมาก็ <code>git stash pop</code> เอางานออกมาทำต่อ — เหมือนกวาดของบนโต๊ะใส่ลิ้นชักไว้ก่อน แล้วหยิบกลับมาทีหลัง</p>
+  <pre><code><span class="p">$</span> <span class="k">git stash</span>            <span class="c"># เก็บงานค้าง โฟลเดอร์กลับมาสะอาด</span>
+<span class="p">$</span> <span class="k">git switch</span> <span class="a">hotfix</span>    <span class="c"># ไปทำงานด่วน</span>
+<span class="p">$</span> <span class="k">git stash pop</span>        <span class="c"># กลับมาเอางานค้างออกมาทำต่อ</span></code></pre>
+
+  <h3>8.2 cherry-pick — หยิบ commit เดี่ยวข้าม branch</h3>
+  <p>บางที branch อื่นมี commit ที่เราอยากได้แค่ดวงเดียว ไม่ใช่ทั้ง branch <code>git cherry-pick &lt;commit&gt;</code> ก๊อปการเปลี่ยนแปลงของ commit นั้นมาวางบน branch ปัจจุบัน เช่นดึงเฉพาะ commit แก้บั๊กเร่งด่วนมาใส่ branch release โดยไม่เอาฟีเจอร์ที่ยังไม่เสร็จมาด้วย</p>
+
+  <h3>8.3 tag — ปักหมุดเวอร์ชันสำคัญ</h3>
+  <p>ขณะที่ branch ขยับไปเรื่อย ๆ <strong>tag คือป้ายถาวรที่ปักลง commit หนึ่งแล้วไม่ขยับ</strong> ใช้ทำเครื่องหมายเวอร์ชันที่ปล่อยจริง เช่น <code>v1.0.0</code> มีสองชนิด: lightweight (แค่ชื่อ) และ annotated (มีผู้สร้าง วันที่ ข้อความ — แนะนำสำหรับ release จริง)</p>
+  <pre><code><span class="p">$</span> <span class="k">git tag</span> -a <span class="a">v1.0.0</span> -m <span class="a">"ปล่อยเวอร์ชันแรก"</span>
+<span class="p">$</span> <span class="k">git push</span> <span class="a">origin v1.0.0</span>   <span class="c"># tag ไม่ถูก push ไปกับ push ปกติ ต้องส่งเอง</span></code></pre>
+
+  <div class="note"><span class="t">สรุปบทที่ 8</span><code>stash</code> พักงานค้างชั่วคราวเพื่อสลับไปทำอย่างอื่น แล้ว <code>pop</code> กลับมา · <code>cherry-pick</code> หยิบ commit เดี่ยวข้าม branch · <code>tag</code> ปักหมุดถาวรลงเวอร์ชันสำคัญ (annotated สำหรับ release) และต้อง push แยกต่างหาก</div>
+  <div class="chapter-end">· · ·</div>
+</section>
+
+<!-- ============================ CH9 ============================ -->
+<section class="chapter" id="ch9">
+  <div class="ch-head">
+    <div class="row"><div class="num">09</div><h2>ทำงานเป็นทีม</h2></div>
+    <span class="chip" style="background:var(--l3-soft);color:var(--l3)">LEVEL 3 · ระดับสูง</span>
+  </div>
+
+  <p>คำสั่ง Git เป็นแค่เครื่องมือ สิ่งที่ทำให้ทีมไม่พังคือ <strong>ข้อตกลงร่วมกันว่าจะใช้มันอย่างไร</strong> บทนี้ว่าด้วยแนวทางที่ทีมส่วนใหญ่ยึด</p>
+
+  <h3>9.1 Pull Request — ประตูตรวจงานก่อนรวม</h3>
+  <p>แทนที่จะ push เข้า <code>main</code> ตรง ๆ ทุกคนทำงานบน branch ของตัวเองแล้วเปิด <strong>Pull Request</strong> (PR) — คำขอให้ทีมรีวิวก่อนรวม PR ทำให้เกิดสามอย่างที่ดีต่อทีม: มีคนตรวจโค้ดก่อนเข้า main, มีที่ถกเถียงเป็นลายลักษณ์อักษร, และรัน CI (ทดสอบอัตโนมัติ) ก่อน merge ได้ — <code>main</code> จึงสะอาดและพร้อมใช้เสมอ</p>
+
+  <h3>9.2 แก้ merge conflict อย่างเข้าใจ</h3>
+  <p>Conflict เกิดเมื่อสองสายแก้ไฟล์เดียวกัน ตำแหน่งเดียวกัน Git เปิดเครื่องหมายไว้ให้คุณเลือก:</p>
+  <pre><code><span class="o">&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD</span>
+ราคา = total * 1.07          <span class="c"># ฝั่งเรา (branch ปัจจุบัน)</span>
+<span class="o">=======</span>
+ราคา = total * 1.10          <span class="c"># ฝั่งที่กำลังรวมเข้ามา</span>
+<span class="o">&gt;&gt;&gt;&gt;&gt;&gt;&gt; feature-vat</span></code></pre>
+  <p>หน้าที่คุณคือตัดสินใจว่าเก็บอันไหน (หรือผสมเป็นอันใหม่) <strong>ลบสามบรรทัดเครื่องหมายออกให้หมด</strong> แล้ว <code>git add</code> ไฟล์นั้นเพื่อบอกว่าแก้เสร็จ จากนั้น commit — conflict ไม่ใช่ความผิดพลาด แต่เป็น Git ฉลาดพอที่จะไม่เดาแทนคุณ</p>
+
+  <h3>9.3 สองปรัชญาการจัดการ branch</h3>
+  <table>
+    <thead><tr><th></th><th>Git Flow</th><th>Trunk-based</th></tr></thead>
+    <tbody>
+      <tr><td><b>แนวคิด</b></td><td>มีหลาย branch ยืนยาว (develop, release, hotfix)</td><td>ทุกคนรวมเข้า main บ่อย ๆ branch สั้น ๆ</td></tr>
+      <tr><td><b>เหมาะกับ</b></td><td>ซอฟต์แวร์ปล่อยเป็นรอบ มีหลายเวอร์ชันต้องดูแล</td><td>เว็บ/SaaS ที่ deploy บ่อย ทีมเล็ก-กลาง</td></tr>
+      <tr><td><b>ความเสี่ยง</b></td><td>branch อยู่นานยิ่ง merge ยาก</td><td>ต้องมีชุดทดสอบดี + feature flag</td></tr>
+    </tbody>
+  </table>
+  <p>กระแสปัจจุบันเอนไปทาง trunk-based เพราะ branch ที่อยู่สั้นแปลว่า conflict น้อยและรวมงานง่าย — หลักการลึก ๆ คือ <strong>ยิ่งรวมงานบ่อย ยิ่งเจ็บน้อย</strong></p>
+
+  <h3>9.4 ข้อความ commit ที่ทีมอ่านรู้เรื่อง</h3>
+  <p>หลายทีมใช้ <strong>Conventional Commits</strong> ขึ้นต้นด้วยชนิดงาน เช่น <code>feat:</code> (ฟีเจอร์ใหม่), <code>fix:</code> (แก้บั๊ก), <code>docs:</code>, <code>refactor:</code> — รูปแบบสม่ำเสมอนี้ทำให้สแกนประวัติได้เร็วและสร้าง changelog อัตโนมัติได้</p>
+
+  <div class="note"><span class="t">สรุปบทที่ 9</span>PR = ประตูรีวิว+ทดสอบก่อนเข้า main ทำให้ branch หลักสะอาดเสมอ · conflict คือ Git ขอให้คุณตัดสินใจ — เลือก ลบเครื่องหมาย add แล้ว commit · Git Flow เหมาะงานปล่อยเป็นรอบ, trunk-based เหมาะ deploy บ่อย · รวมงานบ่อยเจ็บน้อย · Conventional Commits ทำให้ประวัติอ่านง่าย</div>
+  <div class="chapter-end">· · ·</div>
+</section>
+
+<!-- ============================ CH10 ============================ -->
+<section class="chapter" id="ch10">
+  <div class="ch-head">
+    <div class="row"><div class="num">10</div><h2>เครื่องมือสืบสวน</h2></div>
+    <span class="chip" style="background:var(--l3-soft);color:var(--l3)">LEVEL 3 · ระดับสูง</span>
+  </div>
+
+  <p>ประวัติที่ Git เก็บไว้ไม่ได้มีไว้แค่ย้อนเวลา แต่เป็นฐานข้อมูลให้สืบหา "บั๊กนี้เกิดตอนไหน ใครเขียน เพราะอะไร" บทนี้คือเครื่องมือของนักสืบ</p>
+
+  <h3>10.1 bisect — ค้นหา commit ต้นเหตุด้วยการแบ่งครึ่ง</h3>
+  <p>บั๊กโผล่มาแต่ไม่รู้ commit ไหนทำพัง และมีหลายร้อย commit ให้ไล่ <code>git bisect</code> ใช้หลักการค้นแบบแบ่งครึ่ง: คุณบอกจุดที่ยังดี (good) และจุดที่พังแล้ว (bad) Git จะกระโดดไปกึ่งกลางให้ทดสอบ แล้วตัดครึ่งที่ไม่เกี่ยวทิ้งทุกครั้ง — 1,000 commit หาเจอใน ~10 ครั้ง</p>
+  <pre><code><span class="p">$</span> <span class="k">git bisect</span> start
+<span class="p">$</span> <span class="k">git bisect</span> bad              <span class="c"># ตอนนี้พัง</span>
+<span class="p">$</span> <span class="k">git bisect</span> good <span class="a">v1.0.0</span>      <span class="c"># เวอร์ชันนี้เคยดี</span>
+<span class="o">Bisecting: 250 revisions left to test...</span>   <span class="c"># Git พาไปกึ่งกลาง ทดสอบแล้วบอก good/bad</span></code></pre>
+
+  <h3>10.2 blame — ใครแก้บรรทัดนี้ และทำไม</h3>
+  <p><code>git blame &lt;file&gt;</code> แสดงทีละบรรทัดว่า commit ไหนแก้ครั้งล่าสุด ใครเป็นคนแก้ ชื่อฟังดูเหมือนหาคนผิด แต่จริง ๆ ใช้เพื่อ <strong>เข้าใจบริบท</strong> — เจอโค้ดแปลก ๆ blame ไปดู commit นั้นว่าแก้เพราะอะไร มักมีเหตุผลซ่อนอยู่</p>
+
+  <h3>10.3 log ขั้นสูง — ขุดประวัติแบบเจาะจง</h3>
+  <table>
+    <thead><tr><th>คำสั่ง</th><th>หาอะไร</th></tr></thead>
+    <tbody>
+      <tr><td><code>git log -S "ฟังก์ชัน"</code></td><td>commit ที่เพิ่ม/ลบข้อความนี้ในโค้ด (pickaxe) — ตามรอยว่าโค้ดบรรทัดหนึ่งโผล่มาหรือหายไปเมื่อไหร่</td></tr>
+      <tr><td><code>git log --grep "ยอด"</code></td><td>commit ที่ข้อความ commit มีคำนี้</td></tr>
+      <tr><td><code>git log main..feature</code></td><td>commit ที่อยู่ใน feature แต่ยังไม่อยู่ใน main</td></tr>
+      <tr><td><code>git log --author="Khaofang"</code></td><td>เฉพาะ commit ของคนนี้</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note"><span class="t">สรุปบทที่ 10</span><code>bisect</code> หา commit ต้นเหตุด้วยการแบ่งครึ่ง — เร็วแบบ log₂ · <code>blame</code> ดูว่าใครแก้บรรทัดไหนเพื่อเข้าใจบริบท ไม่ใช่หาคนผิด · <code>log</code> ขั้นสูง: <code>-S</code> ตามรอยข้อความในโค้ด, <code>--grep</code> ค้นข้อความ commit, <code>A..B</code> ดูส่วนต่างระหว่าง branch</div>
+  <div class="chapter-end">· · ·</div>
+</section>
+
+<!-- ============================ CH11 ============================ -->
+<section class="chapter" id="ch11">
+  <div class="ch-head">
+    <div class="row"><div class="num">11</div><h2>กลไกภายในของ Git</h2></div>
+    <span class="chip" style="background:var(--l4-soft);color:var(--l4)">LEVEL 4 · ระดับเทพ</span>
+  </div>
+
+  <p>บทนี้คือเส้นแบ่งระหว่าง "ใช้ Git เป็น" กับ "เข้าใจ Git" เมื่อเห็นว่าข้างในมันเก็บข้อมูลอย่างไร คำสั่งทุกบทก่อนหน้าจะกระจ่างขึ้นพร้อมกัน และคำถามกวนใจอย่าง "ทำไม commit ถึงแก้ไม่ได้" หรือ "ทำไม branch ถึงสร้างเร็วจัง" จะมีคำตอบที่ชัดเจน</p>
+
+  <h3>11.1 เปิดดูข้างใน .git/</h3>
+  <p>โฟลเดอร์ <code>.git/</code> ที่ <code>init</code> สร้างขึ้น ไม่ใช่กล่องดำ — มันคือฐานข้อมูลที่เปิดดูได้ ข้างในมี <code>objects/</code> (ที่เก็บข้อมูลจริงทั้งหมด), <code>refs/</code> (ป้าย branch และ tag), และไฟล์ <code>HEAD</code> หัวใจของทั้งหมดคือประโยคเดียว:</p>
+  <p style="font-size:1.15rem;text-align:center;color:var(--teal-deep);font-family:'Bai Jamjuree';font-weight:600;margin:1.4rem 0">Git คือฐานข้อมูลที่ค้นด้วยเนื้อหา (content-addressable)</p>
+  <p>หมายความว่า Git เก็บทุกชิ้นข้อมูลโดยใช้ <strong>SHA ที่คำนวณจากเนื้อหานั้นเอง</strong> เป็นกุญแจ ให้เนื้อหา → ได้กุญแจ → เก็บ/หยิบด้วยกุญแจนั้น เนื้อหาเดียวกันได้กุญแจเดียวกันเสมอ จึงไม่มีวันเก็บซ้ำ</p>
+
+  <h3>11.2 วัตถุสี่ชนิดที่ประกอบเป็น Git ทั้งหมด</h3>
+
+  <figure class="fig">
+    <svg viewBox="0 0 720 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="โครงสร้างวัตถุของ Git: commit ชี้ไปยัง tree, tree ชี้ไปยัง blob ที่เก็บเนื้อหาไฟล์ และชี้ไปยัง tree ย่อยสำหรับโฟลเดอร์ commit ยังชี้กลับไปยัง commit ก่อนหน้า">
+      <rect x="30" y="110" width="150" height="76" rx="10" fill="#f6e0db" stroke="#a33327" stroke-width="1.5"/>
+      <text x="105" y="138" text-anchor="middle" class="lbl">commit</text>
+      <text x="105" y="158" text-anchor="middle" class="sub">ใคร · เมื่อไร · ข้อความ</text>
+      <text x="105" y="174" text-anchor="middle" class="sub">ชี้ไป tree + พ่อแม่</text>
+      <rect x="285" y="110" width="140" height="76" rx="10" fill="#e2eeea" stroke="#0e6e63" stroke-width="1.5"/>
+      <text x="355" y="138" text-anchor="middle" class="lbl">tree</text>
+      <text x="355" y="158" text-anchor="middle" class="sub">สารบบไฟล์/โฟลเดอร์</text>
+      <text x="355" y="174" text-anchor="middle" class="sub">(เหมือน directory)</text>
+      <rect x="530" y="40" width="160" height="62" rx="10" fill="#f8ecd8" stroke="#c07415" stroke-width="1.5"/>
+      <text x="610" y="66" text-anchor="middle" class="lbl">blob</text>
+      <text x="610" y="85" text-anchor="middle" class="sub">เนื้อหาไฟล์ (ดิบ ๆ)</text>
+      <rect x="530" y="150" width="160" height="62" rx="10" fill="#e2eeea" stroke="#0e6e63" stroke-width="1.5"/>
+      <text x="610" y="176" text-anchor="middle" class="lbl">tree ย่อย</text>
+      <text x="610" y="195" text-anchor="middle" class="sub">โฟลเดอร์ข้างใน</text>
+      <path d="M182 148 L 283 148" class="flow-t" marker-end="url(#ar-t)"/>
+      <text x="232" y="140" text-anchor="middle" class="mono-t">root tree</text>
+      <path d="M427 135 L 528 80" class="flow-a" marker-end="url(#ar-a)"/>
+      <text x="495" y="100" text-anchor="middle" class="mono-a">file</text>
+      <path d="M427 162 L 528 178" class="flow-t" marker-end="url(#ar-t)"/>
+      <!-- parent pointer -->
+      <path d="M70 110 C 50 70, 90 50, 110 86" class="flow-r dash" marker-end="url(#ar-r)"/>
+      <text x="120" y="58" class="sub" fill="#a33327">→ commit ก่อนหน้า</text>
+    </svg>
+    <figcaption><b>FIG 11.1</b> — <b>blob</b> เก็บเนื้อหาไฟล์ · <b>tree</b> คือสารบบที่จับคู่ชื่อไฟล์กับ blob (และ tree ย่อยสำหรับโฟลเดอร์) · <b>commit</b> ชี้ไป tree หนึ่งอัน (= ภาพถ่ายทั้งโปรเจกต์) บวกข้อมูลผู้เขียนและ commit ก่อนหน้า · ชนิดที่สี่คือ <b>tag</b> แบบ annotated ที่ชี้ commit พร้อมข้อความ</figcaption>
+  </figure>
+
+  <p>ลองพิสูจน์ด้วยตาเอง — แกะ commit ออกมาดู:</p>
+  <pre><code><span class="p">$</span> <span class="k">git cat-file</span> -p <span class="a">HEAD</span>
+<span class="o">tree a1b2c3...           ← ภาพถ่ายโปรเจกต์ ณ commit นี้</span>
+<span class="o">parent 3b7d8c1...        ← commit ก่อนหน้า</span>
+<span class="o">author Khaofang &lt;...&gt; 1718...</span>
+<span class="o"></span>
+<span class="o">เพิ่มหน้า login</span></code></pre>
+
+  <h3>11.3 ไขปริศนาที่ค้างคามาทั้งเล่ม</h3>
+  <ul>
+    <li><strong>ทำไม commit แก้ไม่ได้?</strong> เพราะ SHA ของมันคำนวณจากเนื้อหา (รวมถึง tree และ parent) แก้อะไรนิดเดียว SHA เปลี่ยน กลายเป็น commit คนละดวงทันที ของเดิมยังอยู่ — "แก้ประวัติ" จึงคือสร้างของใหม่มาแทน เสมอ</li>
+    <li><strong>ทำไม branch ถึงเบาและเร็ว?</strong> เพราะมันเป็นแค่ไฟล์ข้อความใน <code>refs/heads/</code> ที่เก็บ SHA หนึ่งบรรทัด สร้าง branch = เขียนไฟล์ 40 ตัวอักษร ไม่ได้ก๊อปอะไรเลย</li>
+    <li><strong>ทำไมไฟล์ที่ไม่เปลี่ยนถึงไม่กินที่เพิ่ม?</strong> เพราะ blob เดิมมี SHA เดิม commit ใหม่แค่ชี้ blob เดิมซ้ำ ไม่เก็บใหม่</li>
+    <li><strong>reflog/reset กู้ของได้เพราะอะไร?</strong> commit ที่ "หาย" แค่ไม่มีป้ายชี้ แต่ object ยังอยู่ใน <code>objects/</code> จนกว่าจะถูกเก็บกวาด — รู้ SHA ก็ดึงกลับได้</li>
+  </ul>
+
+  <h3>11.4 packfiles — ทำไม repo ใหญ่ ๆ ถึงไม่บวม</h3>
+  <p>ถ้าเก็บทุก blob แยกไฟล์จริง ๆ repo ที่มีประวัติยาวคงโตมหาศาล Git จึงบีบอัด object จำนวนมากเข้า <strong>packfile</strong> เดียวเป็นระยะ ๆ (ตอน <code>gc</code> หรือ push) โดยเก็บเฉพาะส่วนต่างระหว่าง object ที่คล้ายกัน — ได้ประโยชน์ของ snapshot ในการใช้งาน แต่ประหยัดที่แบบ diff ในการจัดเก็บ</p>
+
+  <div class="note"><span class="t">สรุปบทที่ 11</span>Git = ฐานข้อมูลค้นด้วยเนื้อหา เก็บทุกอย่างด้วย SHA ของเนื้อหานั้น · วัตถุสี่ชนิด: blob (เนื้อไฟล์), tree (สารบบ), commit (tree + ผู้เขียน + parent), tag · commit แก้ไม่ได้เพราะ SHA ผูกกับเนื้อหา · branch เบาเพราะเป็นแค่ไฟล์เก็บ SHA · ของที่ "หาย" ยังอยู่จนถูกเก็บกวาด · packfile บีบอัดเพื่อประหยัดที่</div>
+  <div class="chapter-end">· · ·</div>
+</section>
+
+<!-- ============================ CH12 ============================ -->
+<section class="chapter" id="ch12">
+  <div class="ch-head">
+    <div class="row"><div class="num">12</div><h2>เครื่องมือทรงพลัง</h2></div>
+    <span class="chip" style="background:var(--l4-soft);color:var(--l4)">LEVEL 4 · ระดับเทพ</span>
+  </div>
+
+  <p>เครื่องมือเฉพาะทางที่แก้ปัญหาซึ่งคำสั่งพื้นฐานทำได้ลำบาก รู้ไว้ว่ามีอยู่ วันที่เจอโจทย์ตรงจะนึกออก</p>
+
+  <h3>12.1 worktree — หลายโฟลเดอร์ ประวัติเดียว</h3>
+  <p>ปกติหนึ่ง repo เปิดได้ทีละ branch <code>git worktree</code> ให้คุณกาง branch หลายอันลงหลายโฟลเดอร์พร้อมกันโดยใช้ประวัติชุดเดียว — แก้ฟีเจอร์ที่โฟลเดอร์หนึ่ง ขณะตรวจ PR อีกโฟลเดอร์ ไม่ต้อง stash สลับไปมา</p>
+
+  <h3>12.2 hooks — สั่งให้ Git ทำงานอัตโนมัติ</h3>
+  <p>ในทุก repo มีโฟลเดอร์ <code>.git/hooks/</code> สำหรับสคริปต์ที่ Git เรียกอัตโนมัติเมื่อเกิดเหตุการณ์ ที่นิยมคือ <code>pre-commit</code> — รันก่อน commit ทุกครั้ง ใช้ตรวจ lint หรือฟอร์แมตโค้ดให้ผ่านก่อนถึงจะ commit ได้ ป้องกันงานเสียเข้าประวัติตั้งแต่ต้นทาง</p>
+
+  <h3>12.3 submodule กับ subtree — ฝัง repo ในอีก repo</h3>
+  <table>
+    <thead><tr><th></th><th>Submodule</th><th>Subtree</th></tr></thead>
+    <tbody>
+      <tr><td><b>เก็บอะไร</b></td><td>แค่ตัวชี้ไป commit ของ repo อื่น</td><td>ก๊อปโค้ดเข้ามารวมในประวัติเลย</td></tr>
+      <tr><td><b>ข้อดี</b></td><td>repo หลักเล็ก แยกเวอร์ชันชัด</td><td>clone ทีเดียวได้ครบ ไม่ต้องสั่งเพิ่ม</td></tr>
+      <tr><td><b>ข้อเสีย</b></td><td>คนในทีมต้องรู้จักคำสั่ง submodule</td><td>ประวัติปนกัน อัปเดตย้อนกลับยุ่ง</td></tr>
+    </tbody>
+  </table>
+
+  <h3>12.4 rerere &amp; sparse-checkout</h3>
+  <ul>
+    <li><strong>rerere</strong> (reuse recorded resolution) — เปิดไว้แล้ว Git จะจำวิธีที่คุณแก้ conflict หนึ่ง ๆ พอเจอ conflict เดิมซ้ำ (เช่นตอน rebase ยาว ๆ) มันแก้ให้เองอัตโนมัติ</li>
+    <li><strong>sparse-checkout</strong> — กางเฉพาะบางโฟลเดอร์ของ repo ลงเครื่อง มีประโยชน์มากกับ monorepo ขนาดมหึมาที่คุณสนใจแค่ส่วนเดียว</li>
+  </ul>
+
+  <div class="note"><span class="t">สรุปบทที่ 12</span><code>worktree</code> กาง branch หลายอันหลายโฟลเดอร์พร้อมกัน · <code>hooks</code> (เช่น pre-commit) รันสคริปต์อัตโนมัติตามเหตุการณ์ · submodule = ตัวชี้ repo อื่น, subtree = ฝังโค้ดเข้ามาเลย · rerere จำวิธีแก้ conflict ซ้ำ, sparse-checkout กางเฉพาะบางส่วนของ repo ใหญ่</div>
+  <div class="chapter-end">· · ·</div>
+</section>
+
+<!-- ============================ CH13 ============================ -->
+<section class="chapter" id="ch13">
+  <div class="ch-head">
+    <div class="row"><div class="num">13</div><h2>กู้ของหาย &amp; ซ่อมประวัติ</h2></div>
+    <span class="chip" style="background:var(--l4-soft);color:var(--l4)">LEVEL 4 · ระดับเทพ</span>
+  </div>
+
+  <p>เมื่อเข้าใจแล้วว่า object ไม่หายไปง่าย ๆ (บทที่ 11) คุณจะกู้สถานการณ์ที่คนอื่นคิดว่าหมดหวังได้ บทนี้คือชุดทักษะกู้ภัย — และเส้นแบ่งว่าเมื่อไหร่การเขียนประวัติใหม่ถึงปลอดภัย</p>
+
+  <h3>13.1 กู้ commit ที่นึกว่าหายแล้ว</h3>
+  <p>เผลอ <code>reset --hard</code> หรือลบ branch ที่ยังไม่ merge? commit เหล่านั้นกลายเป็น <strong>dangling object</strong> — ไม่มีป้ายชี้ แต่ยังอยู่ใน <code>objects/</code> วิธีกู้: หา SHA จาก <code>reflog</code> (ถ้า HEAD เคยแตะ) แล้วชี้ branch ใหม่กลับไป หรือใช้ <code>git fsck --lost-found</code> กวาดหา commit ที่ลอยอยู่ทั้งหมด</p>
+  <pre><code><span class="p">$</span> <span class="k">git fsck</span> --lost-found
+<span class="o">dangling commit 3b7d8c1...</span>
+<span class="p">$</span> <span class="k">git branch</span> <span class="a">recovered 3b7d8c1</span>    <span class="c"># ปักป้ายกลับ — งานกลับมา</span></code></pre>
+
+  <h3>13.2 ลบไฟล์ลับออกจากทั้งประวัติ</h3>
+  <p>เผลอ commit รหัสผ่านหรือไฟล์ใหญ่ไป การลบใน commit ใหม่ไม่พอ — มันยังฝังอยู่ในประวัติเก่าทุก commit ที่ผ่านมา ต้องเขียนประวัติใหม่ทั้งสายด้วย <code>git filter-repo</code> (เครื่องมือมาตรฐานปัจจุบัน แทน <code>filter-branch</code> ที่ช้าและพลาดง่าย) ที่จะลบไฟล์นั้นออกจากทุก commit</p>
+  <div class="warn"><span class="t">หลังลบรหัสลับ ให้ถือว่ามันรั่วแล้ว</span>ต่อให้ลบออกจากประวัติสำเร็จ ถ้ารหัสเคยถูก push ขึ้นที่สาธารณะแม้ชั่วครู่ ต้องถือว่ามันหลุดแล้ว — <strong>เปลี่ยนรหัส/เพิกถอน key นั้นทันที</strong> การลบประวัติเป็นแค่การทำความสะอาด ไม่ใช่การกู้ความลับกลับคืน</div>
+
+  <h3>13.3 เมื่อไหร่เขียนประวัติใหม่ได้ เมื่อไหร่ห้าม</h3>
+  <p>กฎเดียวที่ต้องจำ ครอบคลุมทั้ง rebase, reset, filter-repo, <code>commit --amend</code>:</p>
+  <table>
+    <thead><tr><th>สถานการณ์</th><th>เขียนประวัติใหม่</th></tr></thead>
+    <tbody>
+      <tr><td>commit ยังอยู่ในเครื่องคุณคนเดียว (ยังไม่ push)</td><td><b style="color:var(--teal-deep)">ได้เลย — อิสระเต็มที่</b></td></tr>
+      <tr><td>push ขึ้น branch ส่วนตัวที่ไม่มีใครใช้ร่วม</td><td>ได้ แต่ต้อง <code>push --force-with-lease</code></td></tr>
+      <tr><td>commit อยู่บน main/branch ที่ทีมใช้ร่วม</td><td><b style="color:var(--red)">ห้าม — ใช้ revert แทน</b></td></tr>
+    </tbody>
+  </table>
+  <p><code>--force-with-lease</code> ปลอดภัยกว่า <code>--force</code> ตรงที่มันจะปฏิเสธถ้ามีคนอื่น push เพิ่มเข้ามาหลังคุณดึงล่าสุด — กันการทับงานเพื่อนโดยไม่รู้ตัว</p>
+
+  <div class="note"><span class="t">สรุปบทที่ 13</span>commit ที่ "หาย" กู้ได้จาก <code>reflog</code> หรือ <code>fsck --lost-found</code> แล้วปักป้ายกลับ · ลบไฟล์ลับทั้งประวัติด้วย <code>filter-repo</code> แต่ถ้าเคยรั่วต้องเปลี่ยนรหัสเสมอ · เขียนประวัติใหม่ได้อิสระถ้ายังไม่แชร์, ใช้ <code>--force-with-lease</code> บน branch ส่วนตัว, ห้ามแตะประวัติที่ทีมใช้ร่วม — ใช้ <code>revert</code> แทน</div>
+  <div class="chapter-end">· · ·</div>
+</section>
+
+<!-- ============================ CH14 ============================ -->
+<section class="chapter" id="ch14">
+  <div class="ch-head">
+    <div class="row"><div class="num">14</div><h2>Repo ใหญ่ &amp; บทสรุป</h2></div>
+    <span class="chip" style="background:var(--l4-soft);color:var(--l4)">LEVEL 4 · ระดับเทพ</span>
+  </div>
+
+  <h3>14.1 เมื่อ repo เริ่มอืด</h3>
+  <p>repo ที่โตมาก (ประวัติยาว ไฟล์เยอะ) จะเริ่มช้า เครื่องมือที่ช่วย:</p>
+  <ul>
+    <li><strong>shallow clone</strong> — <code>git clone --depth 1</code> ดึงแค่ commit ล่าสุด ไม่เอาประวัติทั้งหมด เหมาะกับ CI ที่ต้องการแค่โค้ดล่าสุด</li>
+    <li><strong>Git LFS</strong> — ไฟล์ใหญ่ที่ไม่ใช่โค้ด (วิดีโอ, โมเดล, รูปความละเอียดสูง) ไม่เหมาะเก็บใน Git ตรง ๆ เพราะทุกเวอร์ชันถูกเก็บครบ LFS เก็บไฟล์จริงแยกที่อื่น เหลือไว้ใน repo แค่ตัวชี้</li>
+    <li><strong>git gc</strong> — เก็บกวาด object ที่ลอยและบีบอัดเป็น packfile (ปกติ Git ทำเองเป็นระยะ)</li>
+  </ul>
+
+  <h3>14.2 บทสรุปทั้งเล่ม — แก่นที่ถือกลับไป</h3>
+  <p>ถ้าจำได้แค่ไม่กี่อย่างจากทั้งเล่ม ขอให้เป็นสิ่งเหล่านี้ เพราะทุกคำสั่งงอกออกมาจากมัน:</p>
+  <ul>
+    <li>commit คือ <strong>ภาพถ่ายทั้งโปรเจกต์</strong> ที่มี SHA ผูกกับเนื้อหา — จึงแก้ไม่ได้ ปลอมไม่ได้ และเป็นรากของความน่าเชื่อถือทั้งหมด</li>
+    <li>ไฟล์เดินทางผ่าน <strong>สามพื้นที่</strong> (working → staging → repository) — เข้าใจสิ่งนี้แล้ว add/commit/restore/reset เป็นเรื่องเดียวกันหมด</li>
+    <li>branch เป็นแค่ <strong>ป้ายชี้ commit</strong> — merge, rebase, reset ล้วนคือการขยับป้ายและผูกสายประวัติ</li>
+    <li>เกือบทุกอย่าง <strong>กู้คืนได้</strong> ถ้าเคย commit — <code>reflog</code> คือตาข่ายนิรภัย กล้าทดลองได้เต็มที่</li>
+    <li>เส้นแบ่งเดียวที่ต้องเคารพ: <strong>อย่าเขียนประวัติที่แชร์กับคนอื่นไปแล้ว</strong></li>
+  </ul>
+
+  <div class="use"><span class="t">เส้นทางต่อจากนี้</span>วิธีเก่งขึ้นจริงคือใช้ในงานจริง: ตั้ง repo ทดลองที่พังได้ ลองทุกคำสั่งในบทที่ 6, 7, 13 จนกล้า แล้วลองเปิด PR ในโปรเจกต์โอเพนซอร์สสักตัว — ของจริงสอนได้ลึกกว่าทุกคู่มือ</div>
+
+  <div class="note"><span class="t">สรุปบทที่ 14</span>repo ใหญ่ใช้ shallow clone, Git LFS สำหรับไฟล์ใหญ่, <code>gc</code> เก็บกวาด · แก่นทั้งเล่ม: commit = ภาพถ่ายที่แก้ไม่ได้ · สามพื้นที่ · branch = ป้ายชี้ · กู้คืนได้เสมอด้วย reflog · ห้ามแตะประวัติที่แชร์แล้ว — เท่านี้คุณก็จาก 0 ถึง Hero แล้ว</div>
+  <div class="chapter-end">— จบหลักสูตร —</div>
+</section>
+
+<!-- ===APPEND=== -->
+
+<footer>
+  <p><b>Git 0 → Hero</b> — คู่มือฉบับเข้าใจถึงแก่น · เขียนเป็นภาษาไทย พร้อมไดอะแกรมทุกหัวข้อ</p>
+  <p style="margin-top:.6rem">วิธีใช้ให้คุ้ม: อ่านไล่ระดับ อย่าข้าม Level 0–1 แม้จะใช้ Git เป็นแล้ว เพราะแบบจำลองความคิดในบทต้นคือกุญแจของบทท้าย · ลองทุกคำสั่งใน repo ทดลองที่พังได้</p>
+</footer>
+</main>
+</div>
+
+<script>
+const bar=document.getElementById('progress');
+addEventListener('scroll',()=>{const h=document.documentElement;bar.style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight)*100)+'%'},{passive:true});
+const links=[...document.querySelectorAll('.toc li a')];
+const secs=links.map(a=>document.querySelector(a.getAttribute('href')));
+const spy=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){links.forEach(l=>l.classList.toggle('active',l.getAttribute('href')==='#'+e.target.id))}})},{rootMargin:'-15% 0px -75% 0px'});
+secs.forEach(s=>s&&spy.observe(s));
+const tt=document.getElementById('tocToggle'),toc=document.getElementById('toc');
+tt.addEventListener('click',()=>toc.classList.toggle('open'));
+toc.addEventListener('click',e=>{if(e.target.closest('a'))toc.classList.remove('open')});
+</script>
+</body>
+</html>
